@@ -1,12 +1,56 @@
 use bevy::prelude::*;
 
-#[derive(Component)]
+#[derive(Component, Clone)]
 struct Energy {
     current: i32,
     maxium: i32,
 }
 
+#[derive(Component)]
+struct EnergyUI;
+
 #[derive(Default)]
+struct SpawnEnergyUI;
+
+impl bevy::ecs::system::Command for SpawnEnergyUI {
+    fn apply(self, world: &mut World) {
+        world.spawn((
+            TextBundle::from_section(
+                "",
+                TextStyle {
+                    font_size: 100.0,
+                    color: Color::YELLOW,
+                    ..default()
+                }
+            )
+                .with_text_alignment(TextAlignment::Left)
+                .with_style(Style {
+                    position_type: PositionType::Absolute,
+                    top: Val::Px(5.0),
+                    left: Val::Px(5.0),
+                    ..default()
+                }
+            ),
+            EnergyUI,
+        ));
+    }
+}
+
+fn update_energy_ui(
+    energy: Query<&Energy, (With<Player>, Changed<Energy>)>,
+    mut text: Query<&mut Text, With<EnergyUI>>,
+) {
+    if energy.is_empty() || text.is_empty() {
+        return;
+    }
+    let energy = energy.get_single()
+        .expect("Found more than one player energy");
+    let mut text = text.get_single_mut()
+        .expect("Found more than one energy UI text");
+    text.sections[0].value = format!("Energy: {}/{}", energy.current, energy.maxium);
+}
+
+#[derive(Clone, Default)]
 enum Direction {
     #[default]
     Up,
@@ -15,7 +59,7 @@ enum Direction {
     Right,
 }
 
-#[derive(Component, Default)]
+#[derive(Clone, Component, Default)]
 struct Position {
     x: i32,
     y: i32,
@@ -64,14 +108,15 @@ impl bevy::ecs::system::Command for SpawnPlayer {
                 d: self.facing_direction,
             },
             Energy {
-                current: 0,
+                current: self.max_energy/2,
                 maxium: self.max_energy,
             },
             SpriteSheetBundle {
                 sprite: TextureAtlasSprite::new(0),
                 texture_atlas: sprite_sheet.0.clone(),
                 ..default()
-            }
+            },
+            Player,
         ));
     }
 }
@@ -100,34 +145,97 @@ fn update_position_transforms(
     }
 }
 
+#[derive(Component)]
+struct ChangeAction<T: Component + Clone> {
+    entity: Entity,
+    updated_value: T,
+}
+
+#[derive(Component)]
+struct Player;
+
+fn apply_change_actions<T: Component + Clone>(
+    mut commands: Commands,
+    actions: Query<&ChangeAction<T>>, 
+) {
+    for action in actions.iter() {
+        commands.entity(action.entity)
+            .remove::<ChangeAction<T>>()
+            .insert(action.updated_value.clone());
+    }
+}
+
 fn handle_input(
     keyboard_input: Res<Input<KeyCode>>,
-    mut query: Query<&mut Position>
+    mut commands: Commands,
+    player_state: Query<(Entity, &Position, &Energy), With<Player>>,
 ) {
+    if keyboard_input.get_just_released().last().is_none() {
+        return;
+    }
+    let (entity, position, energy) = player_state.get_single()
+        .expect("Found more than one player position");
+
+    let energy_change = ChangeAction {
+        entity,
+        updated_value: Energy {
+            current: energy.current - 1,
+            ..energy.clone()
+        },
+    };
+
     match keyboard_input.get_just_released().last() {
         Some(KeyCode::Up) => {
-            for mut position in query.iter_mut() {
-                position.y += 1;
-                position.d = Direction::Up;
-            }
+            commands.spawn((
+                ChangeAction {
+                    entity,
+                    updated_value: Position {
+                        y: position.y + 1,
+                        d: Direction::Up,
+                        ..position.clone()
+                    },
+                },
+                energy_change,
+            ));
         },
         Some(KeyCode::Down) => {
-            for mut position in query.iter_mut() {
-                position.y -= 1;
-                position.d = Direction::Down;
-            }
+            commands.spawn((
+                ChangeAction {
+                    entity,
+                    updated_value: Position {
+                        y: position.y - 1,
+                        d: Direction::Down,
+                        ..position.clone()
+                    },
+                },
+                energy_change,
+            ));
         },
         Some(KeyCode::Left) => {
-            for mut position in query.iter_mut() {
-                position.x -= 1;
-                position.d = Direction::Left;
-            }
+            commands.spawn((
+                ChangeAction {
+                    entity,
+                    updated_value: Position {
+                        x: position.x - 1,
+                        d: Direction::Left,
+                        ..position.clone()
+                    },
+                },
+                energy_change,
+            ));
         },
         Some(KeyCode::Right) => {
-            for mut position in query.iter_mut() {
-                position.x += 1;
-                position.d = Direction::Right;
-            }
+            commands.spawn((
+                ChangeAction {
+                    entity,
+                    updated_value: Position {
+                        x: position.x + 1,
+                        d: Direction::Right,
+                        ..position.clone()
+                    },
+                },
+                energy_change,
+            ));
         },
         _ => {},
     }
@@ -139,8 +247,10 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .init_resource::<PlayerSpriteSheet>()
         .add_systems(Startup, |mut commands: Commands| commands.add(SpawnCamera::default()))
-        .add_systems(Startup, |mut commands: Commands| commands.add(SpawnPlayer::default()))
-        .add_systems(Update, handle_input)
+        .add_systems(Startup, |mut commands: Commands| commands.add(SpawnPlayer { max_energy: 100, ..default() }))
+        .add_systems(Startup, |mut commands: Commands| commands.add(SpawnEnergyUI::default()))
+        .add_systems(Update, (handle_input, update_energy_ui))
+        .add_systems(Update, (apply_change_actions::<Position>, apply_change_actions::<Energy>))
         .add_systems(PostUpdate, update_position_transforms.before(bevy::transform::TransformSystem::TransformPropagate))
         .run();
 }
