@@ -85,6 +85,54 @@ impl bevy::ecs::system::Command for SpawnCamera {
     }
 }
 
+fn update_position_transforms(
+    mut query: Query<(&Position, &mut Transform)>
+) {
+    for (position, mut transform) in query.iter_mut() {
+        transform.translation.x = position.x as f32 * 64.0;
+        transform.translation.y = position.y as f32 * 64.0;
+        transform.rotation = match position.d {
+            Direction::Up => Quat::from_rotation_z(0.0),
+            Direction::Down => Quat::from_rotation_z(std::f32::consts::PI),
+            Direction::Left => Quat::from_rotation_z(std::f32::consts::PI * 0.5),
+            Direction::Right => Quat::from_rotation_z(std::f32::consts::PI * 1.5),
+        };
+    }
+}
+
+fn handle_input(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut query: Query<&mut Position>
+) {
+    match keyboard_input.get_just_released().last() {
+        Some(KeyCode::Up) => {
+            for mut position in query.iter_mut() {
+                position.y += 1;
+                position.d = Direction::Up;
+            }
+        },
+        Some(KeyCode::Down) => {
+            for mut position in query.iter_mut() {
+                position.y -= 1;
+                position.d = Direction::Down;
+            }
+        },
+        Some(KeyCode::Left) => {
+            for mut position in query.iter_mut() {
+                position.x -= 1;
+                position.d = Direction::Left;
+            }
+        },
+        Some(KeyCode::Right) => {
+            for mut position in query.iter_mut() {
+                position.x += 1;
+                position.d = Direction::Right;
+            }
+        },
+        _ => {},
+    }
+}
+
 
 fn main() {
     App::new()
@@ -92,5 +140,7 @@ fn main() {
         .init_resource::<PlayerSpriteSheet>()
         .add_systems(Startup, |mut commands: Commands| commands.add(SpawnCamera::default()))
         .add_systems(Startup, |mut commands: Commands| commands.add(SpawnPlayer::default()))
+        .add_systems(Update, handle_input)
+        .add_systems(PostUpdate, update_position_transforms.before(bevy::transform::TransformSystem::TransformPropagate))
         .run();
 }
