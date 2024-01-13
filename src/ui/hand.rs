@@ -6,6 +6,9 @@ pub struct HandUI;
 #[derive(Default)]
 pub struct SpawnHandUI;
 
+#[derive(Component)]
+pub struct CardUISlot(usize);
+
 impl bevy::ecs::system::Command for SpawnHandUI {
     fn apply(self, world: &mut World) {
         let hand_id = world.spawn((
@@ -25,7 +28,7 @@ impl bevy::ecs::system::Command for SpawnHandUI {
             },
             HandUI,
         )).id();
-        let cards: Vec<Entity> = world.spawn_batch((0..5).map(|_| {
+        let cards: Vec<Entity> = world.spawn_batch((0..5).map(|i| {(
             NodeBundle {
                 style: Style {
                     width: Val::Percent(20.0),
@@ -35,9 +38,26 @@ impl bevy::ecs::system::Command for SpawnHandUI {
                 },
                 background_color: Color::PINK.into(),
                 ..default()
-            }
-        })).collect();
+            },
+            CardUISlot(i),
+        )})).collect();
         let mut hand = world.get_entity_mut(hand_id).unwrap();
         hand.push_children(&cards);
+    }
+}
+
+pub fn update_hand_ui(
+    hands: Query<&Hand, (With<Player>, Changed<Hand>)>,
+    mut card_uis: Query<(&CardUISlot, &mut BackgroundColor)>,
+) {
+    for hand in hands.iter() {
+        for (slot, _) in hand.0.iter().enumerate() {
+            for (ui_slot, mut background) in card_uis.iter_mut() {
+                if slot == ui_slot.0 {
+                    background.0 = Color::WHITE.into();
+                }
+            }
+
+        }
     }
 }
