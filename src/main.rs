@@ -81,7 +81,7 @@ impl bevy::ecs::system::Command for SpawnPlayer {
                 recycled: vec![],
                 discarded: vec![],
             },
-            Hand(vec![]),
+            Hand([None; 5]),
         ));
     }
 }
@@ -166,14 +166,24 @@ struct CardState {
 }
 
 #[derive(Component)]
-struct Hand(Vec<Entity>);
+struct Hand([Option<Entity>; 5]);
 
 impl Hand {
     fn add(&mut self, card: Entity) {
-        self.0.push(card);
+        for slot in self.0.iter_mut() {
+            if slot.is_none() {
+                *slot = Some(card);
+                return;
+            }
+        }
     }
     fn remove(&mut self, card: Entity) {
-        self.0.retain(|&c| c != card);
+        for slot in self.0.iter_mut() {
+            if *slot == Some(card) {
+                *slot = None;
+                return;
+            }
+        }
     }
 }
 
@@ -182,15 +192,18 @@ fn sync_hand(
     hands: Query<(Entity, &Hand), Changed<Hand>>,
     states: Query<&CardState>,
 ) {
+    // TODO: This doesn't work for removed cards
     for (entity, hand) in hands.iter() {
         for card in hand.0.iter() {
-            let state = states.get(*card)
-                .expect("Card in hand without state");
-            commands.entity(*card)
-                .insert(CardState {
-                    hand: Some(entity),
-                    ..*state
-                });
+            if let Some(card) = card {
+                let state = states.get(*card)
+                    .expect("Card in hand without state");
+                commands.entity(*card)
+                    .insert(CardState {
+                        hand: Some(entity),
+                        ..*state
+                    });
+            }
         }
     }
 }
@@ -400,13 +413,13 @@ fn apply_card_actions (
 fn handle_input(
     keyboard_input: Res<Input<KeyCode>>,
     mut commands: Commands,
-    player_state: Query<(Entity, &Position, &Energy), With<Player>>,
+    player_state: Query<(Entity, &Position, &Energy, &Hand), With<Player>>,
     mut decks: Query<&mut Deck>,
 ) {
     if keyboard_input.get_just_released().last().is_none() {
         return;
     }
-    let (entity, position, energy) = player_state.get_single()
+    let (entity, position, energy, hand) = player_state.get_single()
         .expect("Found more than one player position");
 
     let energy_change = ChangeAction {
@@ -428,6 +441,17 @@ fn handle_input(
                 deck: entity,
                 hand: entity,
             }));
+        }
+
+        Some(x) if x < &KeyCode::Key6 => {
+            let index = x.clone() as usize - KeyCode::Key1 as usize;
+            if let Some(card) = hand.0[index] {
+                commands.spawn(CardAction::Play(PlayAction {
+                    card,
+                    deck: entity,
+                    hand: entity,
+                }));
+            }
         }
         Some(KeyCode::Up) => {
             commands.spawn((

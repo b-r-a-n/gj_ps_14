@@ -50,14 +50,12 @@ pub fn update_hand_ui(
     hands: Query<&Hand, (With<Player>, Changed<Hand>)>,
     mut card_uis: Query<(&CardUISlot, &mut BackgroundColor)>,
 ) {
-    for hand in hands.iter() {
-        for (slot, _) in hand.0.iter().enumerate() {
-            for (ui_slot, mut background) in card_uis.iter_mut() {
-                if slot == ui_slot.0 {
-                    background.0 = Color::WHITE.into();
-                }
-            }
-
+    if hands.is_empty() { return; }
+    let hand = hands.get_single().expect("There should only be one player hand");
+    for (slot, mut background) in card_uis.iter_mut() {
+        match hand.0[slot.0] {
+            Some(_) => background.0 = Color::WHITE.into(),
+            None => background.0 = Color::PINK.into(),
         }
     }
 }
