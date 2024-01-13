@@ -1,53 +1,12 @@
 use bevy::prelude::*;
+use ui::{energy::*, hand::*};
+
+mod ui;
 
 #[derive(Component, Clone)]
 struct Energy {
     current: i32,
     maxium: i32,
-}
-
-#[derive(Component)]
-struct EnergyUI;
-
-#[derive(Default)]
-struct SpawnEnergyUI;
-
-impl bevy::ecs::system::Command for SpawnEnergyUI {
-    fn apply(self, world: &mut World) {
-        world.spawn((
-            TextBundle::from_section(
-                "",
-                TextStyle {
-                    font_size: 100.0,
-                    color: Color::YELLOW,
-                    ..default()
-                }
-            )
-                .with_text_alignment(TextAlignment::Left)
-                .with_style(Style {
-                    position_type: PositionType::Absolute,
-                    top: Val::Px(5.0),
-                    left: Val::Px(5.0),
-                    ..default()
-                }
-            ),
-            EnergyUI,
-        ));
-    }
-}
-
-fn update_energy_ui(
-    energy: Query<&Energy, (With<Player>, Changed<Energy>)>,
-    mut text: Query<&mut Text, With<EnergyUI>>,
-) {
-    if energy.is_empty() || text.is_empty() {
-        return;
-    }
-    let energy = energy.get_single()
-        .expect("Found more than one player energy");
-    let mut text = text.get_single_mut()
-        .expect("Found more than one energy UI text");
-    text.sections[0].value = format!("Energy: {}/{}", energy.current, energy.maxium);
 }
 
 #[derive(Clone, Default)]
@@ -249,6 +208,7 @@ fn main() {
         .add_systems(Startup, |mut commands: Commands| commands.add(SpawnCamera::default()))
         .add_systems(Startup, |mut commands: Commands| commands.add(SpawnPlayer { max_energy: 100, ..default() }))
         .add_systems(Startup, |mut commands: Commands| commands.add(SpawnEnergyUI::default()))
+        .add_systems(Startup, |mut commands: Commands| commands.add(SpawnHandUI::default()))
         .add_systems(Update, (handle_input, update_energy_ui))
         .add_systems(Update, (apply_change_actions::<Position>, apply_change_actions::<Energy>))
         .add_systems(PostUpdate, update_position_transforms.before(bevy::transform::TransformSystem::TransformPropagate))
