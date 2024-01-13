@@ -2,6 +2,8 @@
 name = "gj_ps_14"
 version = "0.1.0"
 edition = "2021"
+authors = ["Brandon Smith <brandon.cole.smith@gmail.com>"]
+repository = "http://github.com/gj_ps_14.git"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -10,6 +12,13 @@ opt-level = 0
 
 [profile.dev.package."*"]
 opt-level = 3
+
+[profile.lto]
+inherits = "release"
+lto = "thin"
+
+[profile.release]
+opt-level = 'z'
 
 [dependencies]
 bevy = "0.12"
