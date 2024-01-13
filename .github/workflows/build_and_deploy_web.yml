@@ -23,12 +23,12 @@ jobs:
       run: cargo build --release --target wasm32-unknown-unknown
     
     - name: generate-wasm-with-wasm-bindgen
-      run: wasm-bindgen --out-dir ./out/ --no-typescript --target web ./target/wasm32-unknown-unknown/release/game.wasm
+      run: wasm-bindgen --out-dir ./out/ --no-typescript --target web ./target/wasm32-unknown-unknown/release/gj_ps_14.wasm
     
     - name: run-wasm-opt
       uses: NiklasEi/wasm-opt-action@v2
       with:
-        file: ./out/game_bg.wasm
+        file: ./out/gj_ps_14_bg.wasm
     
     - name: copy-assets-folder
       run: cp -r assets ./out/assets
