@@ -1,7 +1,9 @@
 use super::*;
 
 #[derive(Component)]
-pub struct Card;
+pub struct Card {
+    pub energy_cost: u32,
+}
 
 #[derive(Component)]
 pub struct CardState {

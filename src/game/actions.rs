@@ -196,6 +196,7 @@ pub fn apply_card_actions (
                     .expect("Failed to get the deck");
                 hand.remove(action.card);
                 deck.recycle(action.card);
+                commands.spawn(WasPlayed(action.card));
                 true
             },
             _ => false,
@@ -221,5 +222,31 @@ pub fn apply_change<T: Component + Clone>(
         commands.entity(action.entity)
             .remove::<Change<T>>()
             .insert(action.updated_value.clone());
+    }
+}
+
+#[derive(Component)]
+pub struct WasPlayed(pub Entity);
+
+pub fn apply_card (
+    mut commands: Commands,
+    played_cards: Query<(Entity, &WasPlayed)>,
+    energy: Query<(Entity, &Energy), With<Player>>,
+    cards: Query<&Card>,
+) {
+    // Push an energy change based on the card's cost
+    for (played_entity, played_card) in played_cards.iter() {
+        let card = cards.get(played_card.0)
+            .expect("Failed to get the card");
+        let (player, energy) = energy.get_single()
+            .expect("Failed to get the player's energy");
+        commands.spawn(Change {
+            entity: player,
+            updated_value: Energy {
+                current: energy.current - card.energy_cost as i32,
+                ..energy.clone()
+            }
+        });
+        commands.entity(played_entity).remove::<WasPlayed>();
     }
 }

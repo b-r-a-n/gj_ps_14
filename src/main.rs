@@ -46,7 +46,7 @@ fn handle_input(
         Some(KeyCode::Return) => {
             decks.get_mut(entity)
                 .expect("Failed to get the deck")
-                .add(commands.spawn(Card).id());
+                .add(commands.spawn(Card { energy_cost: 1}).id());
         }
         Some(KeyCode::Space) => {
             commands.spawn(ActionType::Draw(Draw {
