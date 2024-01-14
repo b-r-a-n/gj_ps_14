@@ -33,8 +33,8 @@ jobs:
     - name: copy-assets-folder
       run: cp -r assets ./out/assets
 
-    - name: add-index
-      run: cp ./web/index.html ./out/
+    - name: add-html
+      run: cp ./web/*.html ./out/
     
     - name: deploy-to-gh-pages
       uses: JamesIves/github-pages-deploy-action@v4
