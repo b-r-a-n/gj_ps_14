@@ -21,3 +21,14 @@ pub struct GamePosition {
     pub y: i32,
     pub d: GameDirection,
 }
+
+impl GamePosition {
+    pub fn offset(&self, by: i32) -> Self {
+        match self.d {
+            GameDirection::Up => Self { y: self.y + by, ..self.clone() },
+            GameDirection::Down => Self { y: self.y - by, ..self.clone() },
+            GameDirection::Left => Self { x: self.x - by, ..self.clone() },
+            GameDirection::Right => Self { x: self.x + by, ..self.clone() },
+        }
+    }
+}

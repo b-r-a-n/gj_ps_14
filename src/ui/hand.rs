@@ -34,6 +34,7 @@ impl bevy::ecs::system::Command for SpawnHandUI {
                     width: Val::Percent(20.0),
                     height: Val::Percent(100.0),
                     margin: UiRect { left: Val::Px(8.0), bottom: Val::Px(8.0), ..default() },
+                    border: UiRect::all(Val::Px(4.0)),
                     ..default()
                 },
                 background_color: Color::PINK.into(),
@@ -46,6 +47,27 @@ impl bevy::ecs::system::Command for SpawnHandUI {
     }
 }
 
+pub fn update_playable_indicator(
+    playables: Query<Entity, Changed<Playable>>,
+    hands: Query<&Hand, With<Player>>,
+    mut card_uis: Query<(&CardUISlot, &mut BorderColor)>,
+) {
+    if hands.is_empty() { return; }
+    let hand = hands.get_single().expect("There should only be one player hand");
+
+    for (slot, mut border) in card_uis.iter_mut() {
+        if let Some(card_id) = hand.0[slot.0] {
+            if playables.get(card_id).is_ok() {
+                border.0 = Color::GREEN.into();
+            } else {
+                border.0 = Color::RED.into();
+            }
+        } else {
+            border.0 = Color::NONE.into();
+        }
+    }
+}
+
 pub fn update_hand_ui(
     hands: Query<&Hand, (With<Player>, Changed<Hand>)>,
     mut card_uis: Query<(&CardUISlot, &mut BackgroundColor)>,
@@ -54,7 +76,9 @@ pub fn update_hand_ui(
     let hand = hands.get_single().expect("There should only be one player hand");
     for (slot, mut background) in card_uis.iter_mut() {
         match hand.0[slot.0] {
-            Some(_) => background.0 = Color::WHITE.into(),
+            Some(_) => {
+                background.0 = Color::WHITE.into();
+            },
             None => background.0 = Color::PINK.into(),
         }
     }

@@ -232,18 +232,20 @@ pub fn apply_card (
     mut commands: Commands,
     played_cards: Query<(Entity, &WasPlayed)>,
     energy: Query<(Entity, &Energy), With<Player>>,
-    cards: Query<&Card>,
+    cards: Query<&BaseCardInfo>,
+    card_infos: Query<&CardInfo>,
 ) {
     // Push an energy change based on the card's cost
     for (played_entity, played_card) in played_cards.iter() {
         let card = cards.get(played_card.0)
             .expect("Failed to get the card");
+        let card_info = card_infos.get(card.0).unwrap();
         let (player, energy) = energy.get_single()
             .expect("Failed to get the player's energy");
         commands.spawn(Change {
             entity: player,
             updated_value: Energy {
-                current: energy.current - card.energy_cost as i32,
+                current: energy.current - card_info.resource_cost.energy as i32,
                 ..energy.clone()
             }
         });

@@ -25,8 +25,9 @@ fn update_position_transforms(
 fn handle_input(
     keyboard_input: Res<Input<KeyCode>>,
     mut commands: Commands,
-    player_state: Query<(Entity, &GamePosition, &Energy, &Hand), With<Player>>,
     mut decks: Query<&mut Deck>,
+    player_state: Query<(Entity, &GamePosition, &Energy, &Hand), With<Player>>,
+    card_infos: Query<(Entity, &CardInfo)>
 ) {
     if keyboard_input.get_just_released().last().is_none() {
         return;
@@ -44,9 +45,10 @@ fn handle_input(
 
     match keyboard_input.get_just_released().last() {
         Some(KeyCode::Return) => {
+            let card_info_id = card_infos.get_single().expect("Should be exactly 1 card info").0;
             decks.get_mut(entity)
                 .expect("Failed to get the deck")
-                .add(commands.spawn(Card { energy_cost: 1}).id());
+                .add(commands.spawn(BaseCardInfo(card_info_id)).id());
         }
         Some(KeyCode::Space) => {
             commands.spawn(ActionType::Draw(Draw {

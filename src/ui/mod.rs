@@ -9,7 +9,7 @@ impl Plugin for UIPlugins {
         app
             .add_systems(Startup, |mut commands: Commands| commands.add(SpawnEnergyUI::default()))
             .add_systems(Startup, |mut commands: Commands| commands.add(SpawnHandUI::default()))
-            .add_systems(Update, (update_energy_ui, update_hand_ui))
+            .add_systems(Update, (update_energy_ui, update_hand_ui, update_playable_indicator))
         ;
     }
 }
