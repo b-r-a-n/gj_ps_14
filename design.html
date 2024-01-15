@@ -6,7 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="data:,">
-    <title>Pirate Software Game Jam 14: Design Doc</title>
+    <title>Flame Fighters - Design Document</title>
 
     <style>
         body,
@@ -24,7 +24,36 @@
 </head>
 
 <body>
-    Coming soon
+<h1 id="design-document-flame-fighters">Design Document: Flame Fighters</h1>
+<p><em>Made for Pirate Software&#39;s Game Jam 14</em></p>
+<hr>
+<h2 id="premise">Premise</h2>
+<p>A deadly fire is spreading quickly. Players must limit the devastation by taking control of robots that can be used to extinguish the fire.</p>
+<h2 id="gameplay">Gameplay</h2>
+<h3 id="overview">Overview</h3>
+<p>The player must progress through several levels of increasing difficulty. Each level represents a small area that is at risk of being overwhelmed by fire. </p>
+<p>The player is in control of a robot in the area that has various means to prevent the fire from spreading.</p>
+<p>Actions the robot can take represented as cards. To take an action, the player plays an available card.</p>
+<p>Each turn the player draws a new hand of cards and the hottest parts of the fire spread.</p>
+<p>The player does not start with a full deck of cards but gradually builds one up by choosing upgrades for their robot.</p>
+<h3 id="mechanics">Mechanics</h3>
+<h4 id="level">Level</h4>
+<p>Each level is a 2D grid of tiles. The level is complete when all burning tiles are extinguished. There may be multiple criteria for completing a level but at a minimum, the level is failed if all of the non-robot tiles are burning.</p>
+<h4 id="tiles">Tiles</h4>
+<ul>
+<li><strong>Burning tile:</strong> At the end of a turn, tiles adjacent to this one have a change to start burning. This is how the fire will <em>spread</em>.</li>
+<li><strong>Environment tile:</strong> Part of the environment that can be interacted with. The tile may contain a material for an upgrade, a temporary powerup, an obstruction, or even something dangerous like a highly flammable material.</li>
+<li><strong>Robot tile:</strong> At the start of a level, the player&#39;s robot is placed somewhere in the environment. This is a safe tile and the starting point for the robot&#39;s fire fighting ambitions.</li>
+</ul>
+<h4 id="turn">Turn</h4>
+<p>Progress though a level is based on turns. Each turn the player:</p>
+<ul>
+<li>Draws until their hand is full</li>
+<li>Has their energy restored</li>
+<li>Plays cards from their hand until they have no more playable cards or they choose to end the turn.</li>
+</ul>
+<p>At the end of the turn, tiles adjacent to burning tiles roll to determine if they start burning.</p>
+<p>Depending on the content of the tile, there may be other effects when a tile starts to burn.</p>
 </body>
 
 </html>
