@@ -19,9 +19,13 @@ impl Plugin for GamePlugin {
             .init_resource::<PlayerSpriteSheet>()
             .add_event::<CardEvent>()
             .add_systems(Startup, |mut commands: Commands| commands.add(SpawnPlayer { max_energy: 100, ..default() }))
-            .add_systems(Startup, load_card_infos)
-            .add_systems(Update, (apply_change::<GamePosition>, apply_change::<Energy>, apply_card))
+            .add_systems(Startup, (load_card_infos, make_grid))
+            .add_systems(Update, (
+                apply_change::<GamePosition>, 
+                apply_change::<Energy>, 
+                apply_change::<Water>, 
+                apply_card))
             .add_systems(Update, (handle_card_events, apply_card_actions, announce_card_actions))
-            .add_systems(Update, (sync_deck, sync_hand, mark_playable));
+            .add_systems(Update, (sync_deck, sync_hand, mark_playable, realize_card_instances));
     }
 }

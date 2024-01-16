@@ -99,14 +99,12 @@ pub enum ActionState {
 }
 
 pub fn handle_card_events(
-    frame: Res<bevy::core::FrameCount>,
     mut commands: Commands,
     mut events: EventReader<CardEvent>,
 ) {
 
     let mut cleanup_ent = None;
     for event in events.read() {
-        println!("[{:?}] Event Read - {:?}", frame.0, event);
         match event {
             CardEvent::DidDiscard(entity, _) => {
                 cleanup_ent = Some(*entity);
@@ -132,26 +130,22 @@ pub fn handle_card_events(
 }
 
 pub fn announce_card_actions (
-    frame: Res<bevy::core::FrameCount>,
     mut commands: Commands,
     actions: Query<(Entity, &ActionType), Without<ActionState>>,
     mut events: EventWriter<CardEvent>
 ) {
     for (entity, action) in actions.iter() {
-        println!("[{:?}] Announcing - {:?}", frame.0, action);
         events.send(action.to_will_event(entity));
         commands.entity(entity).insert(ActionState::Announced);
     }
 }
 
 pub fn apply_card_actions (
-    frame: Res<bevy::core::FrameCount>,
     mut commands: Commands,
     actions: Query<(Entity, &ActionType, &ActionState)>,
     mut decks: Query<&mut Deck>,
     mut hands: Query<&mut Hand>,
     mut events: EventWriter<CardEvent>,
-    cards: Query<&CardState>,
 ) {
     for (entity, action, state) in actions.iter() {
         if match (action, state) {
@@ -166,18 +160,12 @@ pub fn apply_card_actions (
                 true
             },
             (ActionType::Recycle(action), ActionState::Announced) => {
-                let state = cards.get(action.card)
-                    .expect("Failed to get the card state");
-                if let Some(hand) = state.hand {
-                    let mut hand = hands.get_mut(hand)
-                        .expect("Failed to get the hand");
-                    hand.remove(action.card);
-                }
-                if let Some(deck) = state.deck {
-                    let mut deck = decks.get_mut(deck)
-                        .expect("Failed to get the deck");
-                    deck.recycle(action.card);
-                }
+                let mut hand = hands.get_single_mut()
+                    .expect("Failed to get the hand");
+                hand.remove(action.card);
+                let mut deck = decks.get_single_mut()
+                    .expect("Failed to get the deck");
+                deck.recycle(action.card);
                 true
             },
             (ActionType::Discard(action), ActionState::Announced) => {
@@ -201,7 +189,6 @@ pub fn apply_card_actions (
             },
             _ => false,
         } {
-            println!("[{:?}] Completed - {:?}", frame.0, action);
             commands.entity(entity).insert(ActionState::Applied);
             events.send(action.to_did_event(entity));
         }
@@ -230,25 +217,49 @@ pub struct WasPlayed(pub Entity);
 
 pub fn apply_card (
     mut commands: Commands,
+    player: Query<(Entity, &Energy, &Water), With<Player>>,
     played_cards: Query<(Entity, &WasPlayed)>,
-    energy: Query<(Entity, &Energy), With<Player>>,
-    cards: Query<&BaseCardInfo>,
-    card_infos: Query<&CardInfo>,
+    card_instances: Query<(Option<&NeedsEnergy>, Option<&NeedsWater>, Option<&NeedsMoveable>)>,
+    game_positions: Query<&GamePosition>,
 ) {
-    // Push an energy change based on the card's cost
-    for (played_entity, played_card) in played_cards.iter() {
-        let card = cards.get(played_card.0)
-            .expect("Failed to get the card");
-        let card_info = card_infos.get(card.0).unwrap();
-        let (player, energy) = energy.get_single()
-            .expect("Failed to get the player's energy");
-        commands.spawn(Change {
-            entity: player,
-            updated_value: Energy {
-                current: energy.current - card_info.resource_cost.energy as i32,
-                ..energy.clone()
+    let (player_id, energy, water) = player.get_single().expect("There should only be one player");
+    for (was_played_id, played_card) in played_cards.iter() {
+        let card_instance_id = played_card.0;
+        let (energy_need, water_need, moveable_tiles) = card_instances.get(card_instance_id)
+            .expect("Failed to get card instance");
+        println!("Card {:?} {:?} {:?} {:?} was played", card_instance_id, energy_need, water_need, moveable_tiles);
+        if let Some(energy_need) = energy_need {
+            commands.spawn(Change {
+                entity: player_id,
+                updated_value: Energy {
+                    current: energy.current - energy_need.0,
+                    ..energy.clone()
+                }
+            });
+        }
+        if let Some(water_need) = water_need {
+            commands.spawn(Change {
+                entity: player_id,
+                updated_value: Water {
+                    current: water.current - water_need.0,
+                    ..water.clone()
+                }
+            });
+        }
+        if let Some(tiles) = moveable_tiles {
+            if let Some(tile_id) = tiles.0.first() {
+                let tile_pos = game_positions.get(*tile_id)
+                    .expect("Failed to get tile position");
+                commands.spawn(Change {
+                    entity: player_id,
+                    updated_value: GamePosition {
+                        x: tile_pos.x,
+                        y: tile_pos.y,
+                        d: tile_pos.d.clone(),
+                    }
+                });
             }
-        });
-        commands.entity(played_entity).remove::<WasPlayed>();
+        }
+        commands.entity(was_played_id).remove::<WasPlayed>();
     }
 }

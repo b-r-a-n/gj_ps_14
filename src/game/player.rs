@@ -48,6 +48,10 @@ impl bevy::ecs::system::Command for SpawnPlayer {
                 current: self.max_energy/2,
                 maxium: self.max_energy,
             },
+            Water {
+                current: self.max_energy/2,
+                maxium: self.max_energy,
+            },
             SpriteSheetBundle {
                 sprite: TextureAtlasSprite::new(0),
                 texture_atlas: sprite_sheet.0.clone(),

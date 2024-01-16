@@ -48,12 +48,13 @@ impl bevy::ecs::system::Command for SpawnHandUI {
 }
 
 pub fn update_playable_indicator(
-    playables: Query<Entity, Changed<Playable>>,
-    hands: Query<&Hand, With<Player>>,
+    playables: Query<Entity, With<Playable>>,
+    hand: Query<&Hand>,
     mut card_uis: Query<(&CardUISlot, &mut BorderColor)>,
 ) {
-    if hands.is_empty() { return; }
-    let hand = hands.get_single().expect("There should only be one player hand");
+
+    if hand.is_empty() { return; }
+    let hand = hand.get_single().expect("There should only be one player hand");
 
     for (slot, mut border) in card_uis.iter_mut() {
         if let Some(card_id) = hand.0[slot.0] {
