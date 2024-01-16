@@ -26,6 +26,9 @@ impl Hand {
             }
         }
     }
+    pub fn empty_slots(&self) -> usize {
+        self.0.iter().filter(|&slot| slot.is_none()).count()
+    }
 }
 
 pub fn sync_hand(

@@ -11,6 +11,12 @@ pub struct SpawnPlayer {
     pub max_energy: i32,
 }
 
+pub fn spawn_player(
+    mut commands: Commands
+) {
+    commands.add(SpawnPlayer { max_energy: 100, ..default() });
+}
+
 #[derive(Resource)]
 pub struct PlayerSpriteSheet(Handle<TextureAtlas>);
 
@@ -62,6 +68,10 @@ impl bevy::ecs::system::Command for SpawnPlayer {
                 cards: vec![],
                 recycled: vec![],
                 discarded: vec![],
+            },
+            Stats {
+                energy_regeneration: 20,
+                water_regeneration: 5,
             },
             Hand([None; 5]),
         ));

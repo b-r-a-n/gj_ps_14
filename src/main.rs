@@ -1,5 +1,3 @@
-use std::default;
-
 use bevy::prelude::*;
 use game::*;
 use ui::{UIPlugins, energy::*, hand::*};
@@ -53,7 +51,7 @@ fn handle_input(
                 .add(commands.spawn(BaseCardInfo(card_info_id)).id());
         }
         Some(KeyCode::Space) => {
-            commands.spawn(ActionType::Draw(Draw {
+            commands.spawn(CardActionType::Draw(Draw {
                 deck: entity,
                 hand: entity,
             }));
@@ -62,7 +60,7 @@ fn handle_input(
         Some(x) if x < &KeyCode::Key6 => {
             let index = x.clone() as usize - KeyCode::Key1 as usize;
             if let Some(card) = hand.0[index] {
-                commands.spawn(ActionType::Play(Play {
+                commands.spawn(CardActionType::Play(Play {
                     card,
                     deck: entity,
                     hand: entity,
@@ -125,13 +123,104 @@ fn handle_input(
     }
 }
 
+#[derive(States, Clone, Eq, PartialEq, Debug, Hash, Default)]
+pub enum TurnState {
+    #[default]
+    Starting,
+    WaitingForInput,
+    Ending,
+}
+
+#[derive(Component)]
+pub struct Stats {
+    pub energy_regeneration: i32,
+    pub water_regeneration: i32,
+}
+
+#[derive(Clone, Debug)]
+pub struct RegenerateResource {
+    pub energy_bonus: i32,
+    pub water_bonus: i32,
+}
+
+#[derive(Component)]
+pub enum EffectActionType {
+    RegenerateResource(RegenerateResource)
+}
+
+pub fn fill_hand_with_cards(
+    mut commands: Commands,
+    deck: Query<(Entity, &Deck), With<Player>>,
+    hand: Query<(Entity, &Hand), With<Player>>,
+) {
+    let (hand_id, hand) = hand.get_single().expect("Should be exactly 1 hand");
+    let (deck_id, _) = deck.get_single().expect("Should be exactly 1 deck");
+
+    println!("Filling hand");
+
+    (0..hand.empty_slots()).for_each(|_| {
+        commands.spawn(CardActionType::Draw(Draw {
+            deck: deck_id,
+            hand: hand_id,
+        }));
+    });
+}
+
+pub fn restore_resources(
+    mut commands: Commands,
+) {
+    commands.spawn(EffectActionType::RegenerateResource(RegenerateResource {
+        energy_bonus: 0,
+        water_bonus: 0,
+    }));
+}
+
+#[derive(Component)]
+pub struct NextTurnState;
+
+pub fn next_turn_state(
+    mut commands: Commands,
+) {
+    commands.spawn(NextTurnState);
+}
+
+pub fn transition_turn_state(
+    mut commands: Commands,
+    transition_tag: Query<Entity, With<NextTurnState>>,
+    current: Res<State<TurnState>>,
+    mut next: ResMut<NextState<TurnState>>,
+) {
+    if transition_tag.is_empty() {
+        return;
+    }
+
+    for entity in transition_tag.iter() {
+        commands.entity(entity).despawn();
+    }
+    
+    match current.get() {
+        TurnState::Starting => {
+            next.set(TurnState::WaitingForInput);
+        },
+        TurnState::WaitingForInput => {
+            next.set(TurnState::Ending);
+        },
+        TurnState::Ending => {
+            next.set(TurnState::Starting);
+        },
+    }
+}
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(CameraPlugin)
         .add_plugins(UIPlugins)
         .add_plugins(GamePlugin)
-        .add_systems(Update, handle_input)
+        .add_state::<TurnState>()
+        .add_systems(OnEnter(GameState::Playing), |mut turn_state: ResMut<NextState<TurnState>>| turn_state.set(TurnState::Starting))
+        .add_systems(OnEnter(TurnState::Starting), (fill_hand_with_cards, restore_resources, next_turn_state))
+        .add_systems(Update, (handle_input, transition_turn_state))
         .add_systems(PostUpdate, update_position_transforms.before(bevy::transform::TransformSystem::TransformPropagate))
         .run();
 }

@@ -26,15 +26,16 @@ pub struct Play {
     pub hand: Entity,
 }
 
+
 #[derive(Clone, Component, Debug)]
-pub enum ActionType {
+pub enum CardActionType {
     Draw(Draw),
     Recycle(Recycle),
     Discard(Discard),
     Play(Play),
 }
 
-impl ActionType {
+impl CardActionType {
     pub fn to_will_event(&self, entity: Entity) -> CardEvent {
         match self {
             Self::Draw(action) => CardEvent::WillDraw(entity, action.clone()),
@@ -93,7 +94,7 @@ impl CardEvent {
 }
 
 #[derive(Component)]
-pub enum ActionState {
+pub enum CardActionState {
     Announced,
     Applied,
 }
@@ -124,32 +125,32 @@ pub fn handle_card_events(
     if let Some(entity) = cleanup_ent {
         // TODO: Maybe despawn?
         commands.entity(entity)
-            .remove::<ActionState>()
-            .remove::<ActionType>();
+            .remove::<CardActionState>()
+            .remove::<CardActionType>();
     }
 }
 
 pub fn announce_card_actions (
     mut commands: Commands,
-    actions: Query<(Entity, &ActionType), Without<ActionState>>,
+    actions: Query<(Entity, &CardActionType), Without<CardActionState>>,
     mut events: EventWriter<CardEvent>
 ) {
     for (entity, action) in actions.iter() {
         events.send(action.to_will_event(entity));
-        commands.entity(entity).insert(ActionState::Announced);
+        commands.entity(entity).insert(CardActionState::Announced);
     }
 }
 
 pub fn apply_card_actions (
     mut commands: Commands,
-    actions: Query<(Entity, &ActionType, &ActionState)>,
+    actions: Query<(Entity, &CardActionType, &CardActionState)>,
     mut decks: Query<&mut Deck>,
     mut hands: Query<&mut Hand>,
     mut events: EventWriter<CardEvent>,
 ) {
     for (entity, action, state) in actions.iter() {
         if match (action, state) {
-            (ActionType::Draw(action), ActionState::Announced) => {
+            (CardActionType::Draw(action), CardActionState::Announced) => {
                 let mut deck = decks.get_mut(action.deck)
                     .expect("Failed to get the deck");
                 let mut hand = hands.get_mut(action.hand)
@@ -159,7 +160,7 @@ pub fn apply_card_actions (
                 hand.add(card);
                 true
             },
-            (ActionType::Recycle(action), ActionState::Announced) => {
+            (CardActionType::Recycle(action), CardActionState::Announced) => {
                 let mut hand = hands.get_single_mut()
                     .expect("Failed to get the hand");
                 hand.remove(action.card);
@@ -168,7 +169,7 @@ pub fn apply_card_actions (
                 deck.recycle(action.card);
                 true
             },
-            (ActionType::Discard(action), ActionState::Announced) => {
+            (CardActionType::Discard(action), CardActionState::Announced) => {
                 let mut hand = hands.get_mut(action.hand)
                     .expect("Failed to get the hand");
                 let mut deck = decks.get_mut(action.deck)
@@ -177,7 +178,7 @@ pub fn apply_card_actions (
                 deck.discard(action.card);
                 true
             },
-            (ActionType::Play(action), ActionState::Announced) => {
+            (CardActionType::Play(action), CardActionState::Announced) => {
                 let mut hand = hands.get_mut(action.hand)
                     .expect("Failed to get the hand");
                 let mut deck = decks.get_mut(action.deck)
@@ -189,7 +190,7 @@ pub fn apply_card_actions (
             },
             _ => false,
         } {
-            commands.entity(entity).insert(ActionState::Applied);
+            commands.entity(entity).insert(CardActionState::Applied);
             events.send(action.to_did_event(entity));
         }
     }
