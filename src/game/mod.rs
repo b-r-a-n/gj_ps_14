@@ -1,34 +1,17 @@
+use std::future::pending;
+
 use super::*;
-pub use cards::*;
 pub use actions::*;
+pub use cards::*;
+pub use game::*;
 pub use player::*;
 pub use stats::*;
 
 mod actions;
 mod cards;
+mod game;
 mod player;
 mod stats;
-
-
-#[derive(States, Clone, Eq, PartialEq, Debug, Hash, Default)]
-pub enum GameState {
-    #[default]
-    Loading,
-    Paused,
-    Playing,
-}
-
-pub fn next_game_state(
-    current: Res<State<GameState>>,
-    mut next: ResMut<NextState<GameState>>,
-) {
-
-    match current.get() {
-        GameState::Loading => next.set(GameState::Playing),
-        GameState::Paused => next.set(GameState::Playing),
-        GameState::Playing => next.set(GameState::Paused),
-    }
-}
 
 pub fn add_cards_to_deck(
     mut commands: Commands,
@@ -42,6 +25,28 @@ pub fn add_cards_to_deck(
     });
 }
 
+pub fn check_for_turn_ready(
+    mut commands: Commands,
+    pending_actions: Query<(Entity, &CardActionType)>,
+    hand: Query<&Hand, With<Player>>,
+    deck: Query<&Deck, With<Player>>,
+    mut pending_action_count: Local<usize>,
+    mut next_turn_state: ResMut<NextState<TurnState>>,
+) {
+    if pending_actions.iter().len() != *pending_action_count {
+        info!("Checking for turn ready. {} actions remain", pending_actions.iter().len());
+        *pending_action_count = pending_actions.iter().len();
+        for (e, t) in pending_actions.iter() {
+            info!("{:?} | {:?}", t, e);
+        }
+    }
+
+    if pending_actions.iter().len() == 0 {
+        info!("Turn is ready");
+        next_turn_state.set(TurnState::Started);
+    }
+}
+
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
@@ -49,15 +54,61 @@ impl Plugin for GamePlugin {
         app
             .init_resource::<PlayerSpriteSheet>()
             .add_state::<GameState>()
-            .add_event::<CardEvent>()
-            .add_systems(Startup, (spawn_player, load_card_infos, make_grid, next_game_state))
-            .add_systems(OnTransition { from: GameState::Loading, to: GameState::Playing }, add_cards_to_deck)
+            .add_state::<TurnState>()
+            .add_systems(Startup, (
+                load_card_infos, 
+                make_grid
+            ))
+            .add_systems(OnTransition { from: GameState::Menu, to: GameState::Loading }, (
+                spawn_player, 
+                schedule_transition::<NextGameState>
+            ))
+            .add_systems(OnTransition { from: GameState::Loading, to: GameState::Playing }, (
+                add_cards_to_deck, 
+                schedule_transition::<NextTurnState>
+            ))
+            .add_systems(OnEnter(TurnState::Starting), (
+                fill_hand_with_cards, 
+                restore_resources
+                )
+                .run_if(in_state(GameState::Playing)
+            ))
+            .add_systems(Update, (
+                check_for_turn_ready
+                )
+                .run_if(in_state(GameState::Playing))
+                .run_if(in_state(TurnState::Starting)))
+            .add_systems(OnEnter(TurnState::Started), (
+                update_playable, 
+                schedule_transition::<NextTurnState>
+                ).run_if(in_state(GameState::Playing)))
+            .add_systems(OnEnter(TurnState::WaitingForInput), (
+                log_playable,
+            ))
+            .add_systems(OnEnter(TurnState::Animating), (
+                animate_cards,
+            ))
+            .add_systems(Update, (
+                check_for_turn_over
+                )
+                .run_if(in_state(TurnState::WaitingForInput))
+                .run_if(in_state(GameState::Playing))
+            )
+            .add_systems(Update, (
+                transition::<GameState, NextGameState>,
+                transition::<TurnState, NextTurnState>
+            ))
             .add_systems(Update, (
                 apply_change::<GamePosition>, 
                 apply_change::<Energy>, 
                 apply_change::<Water>, 
-                apply_card))
-            .add_systems(Update, (handle_card_events, apply_card_actions, announce_card_actions))
-            .add_systems(Update, (sync_deck, sync_hand, mark_playable, realize_card_instances));
+                apply_card,
+                apply_card_actions, 
+                sync_deck, 
+                sync_hand, 
+                log_playability_changes,
+                realize_card_instances
+                ).run_if(in_state(GameState::Playing)))
+            ;
     }
 }

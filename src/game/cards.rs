@@ -1,12 +1,12 @@
 use super::*;
 
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub struct InHand;
 
 #[derive(Component)]
 pub struct InDeck;
 
-#[derive(Component)]
+#[derive(Component, Default)]
 pub struct Hand(pub [Option<Entity>; 5]);
 
 impl Hand {
@@ -34,13 +34,20 @@ impl Hand {
 pub fn sync_hand(
     mut commands: Commands,
     hands: Query<(Entity, &Hand), Changed<Hand>>,
+    mut previous_hand: Local<Hand>,
 ) {
     for (_, hand) in hands.iter() {
+        for card in previous_hand.0.iter() {
+            if let Some(card) = card {
+                commands.entity(*card).remove::<InHand>();
+            }
+        }
         for card in hand.0.iter() {
             if let Some(card) = card {
                 commands.entity(*card).insert(InHand);
             }
         }
+        previous_hand.0 = hand.0;
     }
 }
 
@@ -83,9 +90,30 @@ pub fn sync_deck(
 #[derive(Component)]
 pub struct BlockedTile;
 
-pub fn mark_playable(
+pub fn log_playability_changes(
+    added_playable: Query<Entity, Added<Playable>>,
+    mut removed_playable: RemovedComponents<Playable>,
+) {
+    for entity in added_playable.iter() {
+        info!("Card {:?} is now playable", entity);
+    }
+    for entity in removed_playable.iter() {
+        info!("Card {:?} is no longer playable", entity);
+    }
+}
+
+pub fn log_playable(
+    cards: Query<(Entity, Option<&NeedsEnergy>, Option<&NeedsWater>, Option<&NeedsMoveable>, Option<&InHand>, &BaseCardInfo), With<Playable>>,
+) {
+    info!("Waiting for input with playable cards:");
+    for (card_instance_id, energy_cost, water_cost, moveable, in_hand, _) in cards.iter() {
+        info!("Card {:?} | Energy: {:?} | Water: {:?} | Moveable: {:?} | In Hand: {:?}", card_instance_id, energy_cost, water_cost, moveable, in_hand);
+    }
+}
+
+pub fn update_playable(
     mut commands: Commands,
-    cards: Query<(Entity, Option<&NeedsEnergy>, Option<&NeedsWater>, Option<&NeedsMoveable>, &BaseCardInfo), With<InHand>>,
+    cards: Query<(Entity, Option<&NeedsEnergy>, Option<&NeedsWater>, Option<&NeedsMoveable>, Option<&InHand>, Option<&WasPlayed>, &BaseCardInfo)>,
     energy: Query<&Energy, With<Player>>,
     water: Query<&Water, With<Player>>,
     blocked_tiles: Query<&GamePosition, With<BlockedTile>>,
@@ -94,9 +122,14 @@ pub fn mark_playable(
     let energy = energy.get_single().expect("Should be exactly 1 energy");
     let water = water.get_single().expect("Should be exactly 1 energy");
     let _ = position.get_single().expect("Should be exactly 1 position");
-    for (card_instance_id, energy_cost, water_cost, moveable, _) in cards.iter() {
+    for (card_instance_id, energy_cost, water_cost, moveable, in_hand, was_played, _) in cards.iter() {
+        if in_hand.is_none() || was_played.is_some() {
+            commands.entity(card_instance_id).remove::<Playable>();
+            continue;
+        }
         if energy_cost.is_some_and(|c| c.0 > energy.current) 
         || water_cost.is_some_and(|c| c.0 > water.current) {
+            commands.entity(card_instance_id).remove::<Playable>();
             continue;
         }
         // Need at least one moveable tile
@@ -112,6 +145,7 @@ pub fn mark_playable(
                 }
             }
             if !unblocked_tile {
+                commands.entity(card_instance_id).remove::<Playable>();
                 continue;
             }
         }

@@ -27,30 +27,29 @@ fn handle_input(
     mut commands: Commands,
     mut decks: Query<&mut Deck>,
     player_state: Query<(Entity, &GamePosition, &Energy, &Hand), With<Player>>,
+    game_state: Res<State<GameState>>,
+    turn_state: Res<State<TurnState>>,
     card_infos: Query<(Entity, &CardInfo)>
 ) {
     if keyboard_input.get_just_released().last().is_none() {
         return;
     }
-    let (entity, position, energy, hand) = player_state.get_single()
-        .expect("Found more than one player position");
-
-    let energy_change = Change {
-        entity,
-        updated_value: Energy {
-            current: energy.current - 1,
-            ..energy.clone()
-        },
-    };
-
     match keyboard_input.get_just_released().last() {
         Some(KeyCode::Return) => {
+            /*
             let card_info_id = card_infos.get_single().expect("Should be exactly 1 card info").0;
             decks.get_mut(entity)
                 .expect("Failed to get the deck")
                 .add(commands.spawn(BaseCardInfo(card_info_id)).id());
+            */
+            if game_state.get() == &GameState::Menu {
+                commands.spawn(NextGameState);
+            } else if turn_state.get() == &TurnState::WaitingForInput {
+                commands.spawn(NextTurnState);
+            }
         }
         Some(KeyCode::Space) => {
+            let entity = player_state.get_single().expect("Should be exactly 1 player").0;
             commands.spawn(CardActionType::Draw(Draw {
                 deck: entity,
                 hand: entity,
@@ -58,6 +57,7 @@ fn handle_input(
         }
 
         Some(x) if x < &KeyCode::Key6 => {
+            let (entity, _, _, hand) = player_state.get_single().expect("Should be exactly 1 player");
             let index = x.clone() as usize - KeyCode::Key1 as usize;
             if let Some(card) = hand.0[index] {
                 commands.spawn(CardActionType::Play(Play {
@@ -67,6 +67,7 @@ fn handle_input(
                 }));
             }
         }
+        /*
         Some(KeyCode::Up) => {
             commands.spawn((
                 Change {
@@ -119,17 +120,11 @@ fn handle_input(
                 energy_change,
             ));
         },
+        */
         _ => {},
     }
 }
 
-#[derive(States, Clone, Eq, PartialEq, Debug, Hash, Default)]
-pub enum TurnState {
-    #[default]
-    Starting,
-    WaitingForInput,
-    Ending,
-}
 
 #[derive(Component)]
 pub struct Stats {
@@ -147,6 +142,9 @@ pub struct RegenerateResource {
 pub enum EffectActionType {
     RegenerateResource(RegenerateResource)
 }
+
+#[derive(Component)]
+pub struct Completed;
 
 pub fn fill_hand_with_cards(
     mut commands: Commands,
@@ -175,41 +173,47 @@ pub fn restore_resources(
     }));
 }
 
-#[derive(Component)]
-pub struct NextTurnState;
-
-pub fn next_turn_state(
+pub fn handle_resource_regeneration(
     mut commands: Commands,
+    mut energy: Query<&mut Energy, With<Player>>,
+    mut water: Query<&mut Water, With<Player>>,
+    stats: Query<&Stats, With<Player>>,
+    regenerate_resource: Query<(Entity, &EffectActionType), Without<Completed>>,
 ) {
-    commands.spawn(NextTurnState);
+    let stats = stats.get_single().expect("Should be exactly 1 stats");
+    let mut energy_bonus = stats.energy_regeneration;
+    let mut water_bonus = stats.water_regeneration;
+    for (effect_instance_id, effect) in regenerate_resource.iter() {
+        match effect {
+            EffectActionType::RegenerateResource(regenerate_resource) => {
+                energy_bonus += regenerate_resource.energy_bonus;
+                water_bonus += regenerate_resource.water_bonus;
+            },
+            _ => {},
+        }
+        commands.entity(effect_instance_id).insert(Completed);
+    }
+    let mut energy = energy.get_single_mut().expect("Failed to get energy");
+    let mut water = water.get_single_mut().expect("Failed to get water");
+    energy.current = (energy.current + energy_bonus).min(energy.maxium);
+    water.current = (water.current + water_bonus).min(water.maxium);
 }
 
-pub fn transition_turn_state(
+pub fn cleanup_completed_effects(
     mut commands: Commands,
-    transition_tag: Query<Entity, With<NextTurnState>>,
-    current: Res<State<TurnState>>,
-    mut next: ResMut<NextState<TurnState>>,
+    completed_effects: Query<Entity, (With<EffectActionType>, With<Completed>)>,
 ) {
-    if transition_tag.is_empty() {
-        return;
-    }
-
-    for entity in transition_tag.iter() {
+    for entity in completed_effects.iter() {
         commands.entity(entity).despawn();
     }
-    
-    match current.get() {
-        TurnState::Starting => {
-            next.set(TurnState::WaitingForInput);
-        },
-        TurnState::WaitingForInput => {
-            next.set(TurnState::Ending);
-        },
-        TurnState::Ending => {
-            next.set(TurnState::Starting);
-        },
-    }
 }
+
+fn print_state_change<T: States>(
+    state: Res<State<T>>,
+) {
+    info!("{:?} changed to: {:?}", std::any::type_name::<T>(), state.get());
+}
+
 
 fn main() {
     App::new()
@@ -217,10 +221,10 @@ fn main() {
         .add_plugins(CameraPlugin)
         .add_plugins(UIPlugins)
         .add_plugins(GamePlugin)
-        .add_state::<TurnState>()
-        .add_systems(OnEnter(GameState::Playing), |mut turn_state: ResMut<NextState<TurnState>>| turn_state.set(TurnState::Starting))
-        .add_systems(OnEnter(TurnState::Starting), (fill_hand_with_cards, restore_resources, next_turn_state))
-        .add_systems(Update, (handle_input, transition_turn_state))
+        .add_systems(Update, print_state_change::<TurnState>.run_if(state_changed::<TurnState>()))
+        .add_systems(Update, print_state_change::<GameState>.run_if(state_changed::<GameState>()))
+        //.add_systems(Update, (handle_resource_regeneration, cleanup_completed_effects))
+        .add_systems(Update, handle_input)
         .add_systems(PostUpdate, update_position_transforms.before(bevy::transform::TransformSystem::TransformPropagate))
         .run();
 }
