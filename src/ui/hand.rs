@@ -37,6 +37,7 @@ impl bevy::ecs::system::Command for SpawnHandUI {
                         width: Val::Px(CARD_WIDTH),
                         height: Val::Px(CARD_HEIGHT),
                         margin: UiRect { left: Val::Px(8.0), bottom: Val::Px(8.0), top: Val::Px(8.0), ..default() },
+                        border: UiRect::all(Val::Px(4.0)),
                         ..default()
                     },
                     background_color: Color::PINK.into(),
@@ -48,7 +49,7 @@ impl bevy::ecs::system::Command for SpawnHandUI {
                         style: Style {
                             width: Val::Px(120.0),
                             height: Val::Px(120.0),
-                            left: Val::Px(10.0),
+                            left: Val::Px(6.0),
                             top: Val::Px(40.0),
                             ..default()
                         },
@@ -67,21 +68,22 @@ impl bevy::ecs::system::Command for SpawnHandUI {
 pub fn update_playable_indicator(
     playables: Query<Entity, With<Playable>>,
     hand: Query<&Hand>,
-    mut card_uis: Query<(&CardUISlot, &mut BorderColor)>,
+    mut card_uis: Query<(&Parent, &CardUISlot)>,
+    mut borders: Query<&mut BorderColor>
 ) {
 
     if hand.is_empty() { return; }
     let hand = hand.get_single().expect("There should only be one player hand");
 
-    for (slot, mut border) in card_uis.iter_mut() {
-        if let Some(card_id) = hand.0[slot.0] {
-            if playables.get(card_id).is_ok() {
-                border.0 = Color::GREEN.into();
+    for (parent, slot) in card_uis.iter_mut() {
+        if let Some(card_instance_id) = hand.0[slot.0] {
+            if playables.get(card_instance_id).is_ok() {
+                borders.get_mut(parent.get()).unwrap().0 = Color::GREEN.into();
             } else {
-                border.0 = Color::RED.into();
+                borders.get_mut(parent.get()).unwrap().0 = Color::RED.into();
             }
         } else {
-            border.0 = Color::NONE.into();
+            borders.get_mut(parent.get()).unwrap().0 = Color::NONE.into();
         }
     }
 }
@@ -99,7 +101,6 @@ pub fn update_hand_ui(
         match hand.0[slot.0] {
             Some(card_instance_id) => {
                 let base_card_id = base_card_info.get(card_instance_id).expect("Card without base card info").0;
-                info!("Want to show the image for {:?} in slot {:?}", card_instance_id, slot.0);
                 let card_info = card_info.get(base_card_id).expect("Card without info");
                 background.0 = Color::WHITE.into();
                 *atlas = card_sprites.0.clone();

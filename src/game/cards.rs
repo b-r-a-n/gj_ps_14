@@ -162,10 +162,15 @@ pub struct ResourceInfo {
     pub water: u32,
 }
 
+pub enum Rotation {
+    None,
+    Left,
+    Right,
+}
+
 pub struct MovementInfo {
-    pub destination_target: TileTarget,
-    pub with_path: bool,
-    pub pre_condition: bool,
+    pub position: TileTarget,
+    pub rotation: Rotation,
 }
 
 pub struct DamageInfo {
@@ -241,7 +246,7 @@ pub fn realize_card_instances(
         if card_info.resource_cost.water > 0 {
             commands.entity(entity).insert(NeedsWater(card_info.resource_cost.energy as i32));
         }
-        match card_info.position_change.destination_target {
+        match card_info.position_change.position {
             TileTarget::None => {},
             TileTarget::Offset(dist) => { 
                 let tile_id = tile_grid.single().get(&origin.offset(dist));
@@ -289,20 +294,59 @@ pub fn make_grid(
 pub fn load_card_infos(
     mut commands: Commands,
 ) {
-    // Doze
-    commands.spawn((
-        CardInfo {
-            resource_cost: ResourceInfo {
-                energy: 1,
-                water: 0,
+    commands.spawn_batch(vec![
+        (
+            CardInfo {
+                resource_cost: ResourceInfo {
+                    energy: 1,
+                    water: 0,
+                },
+                position_change: MovementInfo {
+                    position: TileTarget::Offset(1),
+                    rotation: Rotation::None,
+                },
+                texture_index: 0,
             },
-            position_change: MovementInfo {
-                destination_target: TileTarget::Offset(1),
-                with_path: true,
-                pre_condition: true,
+        ),
+        (
+            CardInfo {
+                resource_cost: ResourceInfo {
+                    energy: 1,
+                    water: 0,
+                },
+                position_change: MovementInfo {
+                    position: TileTarget::Offset(-1),
+                    rotation: Rotation::None,
+                },
+                texture_index: 1,
             },
-            texture_index: 0,
-        },
-    ));
+        ),
+        (
+            CardInfo {
+                resource_cost: ResourceInfo {
+                    energy: 1,
+                    water: 0,
+                },
+                position_change: MovementInfo {
+                    position: TileTarget::None,
+                    rotation: Rotation::Right,
+                },
+                texture_index: 2,
+            },
+        ),
+        (
+            CardInfo {
+                resource_cost: ResourceInfo {
+                    energy: 1,
+                    water: 0,
+                },
+                position_change: MovementInfo {
+                    position: TileTarget::None,
+                    rotation: Rotation::Left,
+                },
+                texture_index: 3,
+            },
+        ),
+    ]);
 
 }
