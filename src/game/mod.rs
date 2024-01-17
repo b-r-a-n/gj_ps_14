@@ -1,35 +1,45 @@
-use std::future::pending;
-
 use super::*;
+
 pub use actions::*;
 pub use cards::*;
 pub use game::*;
 pub use player::*;
 pub use stats::*;
+pub use card::*;
 
 mod actions;
 mod cards;
+mod card;
 mod game;
 mod player;
 mod stats;
 
 pub fn add_cards_to_deck(
-    mut commands: Commands,
     mut deck: Query<&mut Deck, With<Player>>,
-    card_infos: Query<Entity, With<CardInfo>>,
+    card_instances: Query<Entity, With<BaseCardInfo>>,
 ) {
     let mut deck = deck.get_single_mut().expect("Should be exactly 1 deck");
-    let card_info_id = card_infos.iter().next().expect("Should be at least 1 card info");
-    (0..40).for_each(|_| {
-        deck.add(commands.spawn(BaseCardInfo(card_info_id)).id());
-    });
+    for card_instance_id in card_instances.iter() {
+        info!("Adding card {:?} to deck", card_instance_id);
+        deck.add(card_instance_id);
+    }
+}
+
+pub fn spawn_cards(
+    mut commands: Commands,
+    card_infos: Query<Entity, With<CardInfo>>,
+) {
+    for card_info_id in card_infos.iter() {
+        (0..10).for_each(|_| {
+            commands.add(SpawnCard {
+                base_card_info: card_info_id,
+            });
+        });
+    }
 }
 
 pub fn check_for_turn_ready(
-    mut commands: Commands,
     pending_actions: Query<(Entity, &CardActionType)>,
-    hand: Query<&Hand, With<Player>>,
-    deck: Query<&Deck, With<Player>>,
     mut pending_action_count: Local<usize>,
     mut next_turn_state: ResMut<NextState<TurnState>>,
 ) {
@@ -47,12 +57,20 @@ pub fn check_for_turn_ready(
     }
 }
 
+fn print_cards_in_deck(
+    deck: Query<&Deck, With<Player>>,
+) {
+    let deck = deck.get_single().expect("Should be exactly 1 deck");
+    info!("Cards in deck: {:?}", deck.cards);
+}
+
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         app
             .init_resource::<PlayerSpriteSheet>()
+            .init_resource::<CardSpriteSheet>()
             .add_state::<GameState>()
             .add_state::<TurnState>()
             .add_systems(Startup, (
@@ -61,6 +79,7 @@ impl Plugin for GamePlugin {
             ))
             .add_systems(OnTransition { from: GameState::Menu, to: GameState::Loading }, (
                 spawn_player, 
+                spawn_cards,
                 schedule_transition::<NextGameState>
             ))
             .add_systems(OnTransition { from: GameState::Loading, to: GameState::Playing }, (
@@ -68,9 +87,10 @@ impl Plugin for GamePlugin {
                 schedule_transition::<NextTurnState>
             ))
             .add_systems(OnEnter(TurnState::Starting), (
+                print_cards_in_deck,
                 fill_hand_with_cards, 
-                restore_resources
                 )
+                .chain()
                 .run_if(in_state(GameState::Playing)
             ))
             .add_systems(Update, (

@@ -132,17 +132,6 @@ pub struct Stats {
     pub water_regeneration: i32,
 }
 
-#[derive(Clone, Debug)]
-pub struct RegenerateResource {
-    pub energy_bonus: i32,
-    pub water_bonus: i32,
-}
-
-#[derive(Component)]
-pub enum EffectActionType {
-    RegenerateResource(RegenerateResource)
-}
-
 #[derive(Component)]
 pub struct Completed;
 
@@ -164,50 +153,6 @@ pub fn fill_hand_with_cards(
     });
 }
 
-pub fn restore_resources(
-    mut commands: Commands,
-) {
-    commands.spawn(EffectActionType::RegenerateResource(RegenerateResource {
-        energy_bonus: 0,
-        water_bonus: 0,
-    }));
-}
-
-pub fn handle_resource_regeneration(
-    mut commands: Commands,
-    mut energy: Query<&mut Energy, With<Player>>,
-    mut water: Query<&mut Water, With<Player>>,
-    stats: Query<&Stats, With<Player>>,
-    regenerate_resource: Query<(Entity, &EffectActionType), Without<Completed>>,
-) {
-    let stats = stats.get_single().expect("Should be exactly 1 stats");
-    let mut energy_bonus = stats.energy_regeneration;
-    let mut water_bonus = stats.water_regeneration;
-    for (effect_instance_id, effect) in regenerate_resource.iter() {
-        match effect {
-            EffectActionType::RegenerateResource(regenerate_resource) => {
-                energy_bonus += regenerate_resource.energy_bonus;
-                water_bonus += regenerate_resource.water_bonus;
-            },
-            _ => {},
-        }
-        commands.entity(effect_instance_id).insert(Completed);
-    }
-    let mut energy = energy.get_single_mut().expect("Failed to get energy");
-    let mut water = water.get_single_mut().expect("Failed to get water");
-    energy.current = (energy.current + energy_bonus).min(energy.maxium);
-    water.current = (water.current + water_bonus).min(water.maxium);
-}
-
-pub fn cleanup_completed_effects(
-    mut commands: Commands,
-    completed_effects: Query<Entity, (With<EffectActionType>, With<Completed>)>,
-) {
-    for entity in completed_effects.iter() {
-        commands.entity(entity).despawn();
-    }
-}
-
 fn print_state_change<T: States>(
     state: Res<State<T>>,
 ) {
@@ -217,13 +162,12 @@ fn print_state_change<T: States>(
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .add_plugins(CameraPlugin)
         .add_plugins(UIPlugins)
         .add_plugins(GamePlugin)
         .add_systems(Update, print_state_change::<TurnState>.run_if(state_changed::<TurnState>()))
         .add_systems(Update, print_state_change::<GameState>.run_if(state_changed::<GameState>()))
-        //.add_systems(Update, (handle_resource_regeneration, cleanup_completed_effects))
         .add_systems(Update, handle_input)
         .add_systems(PostUpdate, update_position_transforms.before(bevy::transform::TransformSystem::TransformPropagate))
         .run();

@@ -9,18 +9,20 @@ pub struct SpawnHandUI;
 #[derive(Component)]
 pub struct CardUISlot(usize);
 
+const CARD_WIDTH: f32 = 140.0;
+const CARD_HEIGHT: f32 = 200.0;
+
 impl bevy::ecs::system::Command for SpawnHandUI {
     fn apply(self, world: &mut World) {
         let hand_id = world.spawn((
             NodeBundle {
                 style: Style {
-                    width: Val::Px(125.0*5.0),
-                    height: Val::Px(150.0),
                     flex_direction: FlexDirection::Row,
                     align_items: AlignItems::End,
                     position_type: PositionType::Absolute,
                     bottom: Val::Px(0.0),
                     right: Val::Px(0.0),
+                    border: UiRect::right(Val::Px(8.0)),
                     ..default()
                 },
                 background_color: Color::BLACK.into(),
@@ -28,20 +30,35 @@ impl bevy::ecs::system::Command for SpawnHandUI {
             },
             HandUI,
         )).id();
-        let cards: Vec<Entity> = world.spawn_batch((0..5).map(|i| {(
-            NodeBundle {
-                style: Style {
-                    width: Val::Percent(20.0),
-                    height: Val::Percent(100.0),
-                    margin: UiRect { left: Val::Px(8.0), bottom: Val::Px(8.0), ..default() },
-                    border: UiRect::all(Val::Px(4.0)),
+        let cards: Vec<Entity> = (0..5).map(|i| {
+            world.spawn((
+                NodeBundle {
+                    style: Style {
+                        width: Val::Px(CARD_WIDTH),
+                        height: Val::Px(CARD_HEIGHT),
+                        margin: UiRect { left: Val::Px(8.0), bottom: Val::Px(8.0), top: Val::Px(8.0), ..default() },
+                        ..default()
+                    },
+                    background_color: Color::PINK.into(),
                     ..default()
                 },
-                background_color: Color::PINK.into(),
-                ..default()
-            },
-            CardUISlot(i),
-        )})).collect();
+            )).with_children(|parent| {
+                parent.spawn((
+                    AtlasImageBundle {
+                        style: Style {
+                            width: Val::Px(120.0),
+                            height: Val::Px(120.0),
+                            left: Val::Px(10.0),
+                            top: Val::Px(40.0),
+                            ..default()
+                        },
+                        ..default()
+                    },
+                    CardUISlot(i),
+                ));
+            })
+            .id()
+        }).collect();
         let mut hand = world.get_entity_mut(hand_id).unwrap();
         hand.push_children(&cards);
     }
@@ -71,16 +88,28 @@ pub fn update_playable_indicator(
 
 pub fn update_hand_ui(
     hands: Query<&Hand, (With<Player>, Changed<Hand>)>,
-    mut card_uis: Query<(&CardUISlot, &mut BackgroundColor)>,
+    card_sprites: Res<CardSpriteSheet>,
+    card_info: Query<&CardInfo>,
+    base_card_info: Query<&BaseCardInfo>,
+    mut card_uis: Query<(&CardUISlot, &mut BackgroundColor, &mut Handle<TextureAtlas>, &mut UiTextureAtlasImage)>,
 ) {
     if hands.is_empty() { return; }
     let hand = hands.get_single().expect("There should only be one player hand");
-    for (slot, mut background) in card_uis.iter_mut() {
+    for (slot, mut background, mut atlas, mut image) in card_uis.iter_mut() {
         match hand.0[slot.0] {
-            Some(_) => {
+            Some(card_instance_id) => {
+                let base_card_id = base_card_info.get(card_instance_id).expect("Card without base card info").0;
+                info!("Want to show the image for {:?} in slot {:?}", card_instance_id, slot.0);
+                let card_info = card_info.get(base_card_id).expect("Card without info");
                 background.0 = Color::WHITE.into();
+                *atlas = card_sprites.0.clone();
+                image.index = card_info.texture_index;
             },
-            None => background.0 = Color::PINK.into(),
+            None => {
+                background.0 = Color::PINK.into();
+                *atlas = Handle::<TextureAtlas>::default();
+                image.index = 0;
+            }
         }
     }
 }

@@ -178,7 +178,13 @@ pub struct DamageInfo {
 pub struct CardInfo {
     pub resource_cost: ResourceInfo,
     pub position_change: MovementInfo,
-    pub damage: DamageInfo,
+    pub texture_index: usize,
+}
+
+#[derive(Component)]
+pub struct AssetInfo {
+    pub sprite_sheet_name: String,
+    pub sprite_index: usize,
 }
 
 #[derive(Component)]
@@ -295,11 +301,7 @@ pub fn load_card_infos(
                 with_path: true,
                 pre_condition: true,
             },
-            damage: DamageInfo {
-                damage_target: TileTarget::Offset(1),
-                amount: 1,
-                pre_condition: false,
-            },
+            texture_index: 0,
         },
     ));
 

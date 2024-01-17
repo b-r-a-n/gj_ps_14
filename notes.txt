@@ -1,0 +1,36 @@
+
+Lifecycle:
+1. (Startup) Load the static card info into entities that will be referenced by card instances
+2. (Startup) 
+    Show the menu UI
+    Set GameState to Menu
+3. (OnKeyPress) 
+    Set level parameters
+    Set the player info
+    Set GameState to Loading
+4. (OnEnter<GameState::Loading>)
+    Make the level grid/tiles based on the parameters
+    Spawn the player based on the player info
+    Spawn the flames based on the parameters
+    Set the GameState to Playing
+5. (OnEnter<GameState::Playing) 
+    Add cards to the player's deck
+    Set the TurnState to Starting
+6. (OnEnter<TurnState::Starting)
+    Start of turn effects
+        Restore Resources
+        etc.
+    Fill hand with cards from deck
+    Set the TurnState to Started
+7. (OnEnter<TurnState::Started>) 
+    Update card playability
+    Set the TurnState to WaitingForInput
+8. (OnCardPlayed)
+    Set the TurnState to Animating
+    Apply the effects
+        Card actions such as drawing
+        State changes such as moving or energy consumption
+9. (OnExit<TurnState::Animating>)
+    Sync deck/hand info
+
+
