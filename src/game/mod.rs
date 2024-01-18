@@ -1,3 +1,5 @@
+use self::ui::hand;
+
 use super::*;
 
 pub use actions::*;
@@ -23,6 +25,7 @@ pub fn add_cards_to_deck(
         info!("Adding card {:?} to deck", card_instance_id);
         deck.add(card_instance_id);
     }
+    deck.shuffle();
 }
 
 pub fn spawn_cards(
@@ -40,19 +43,23 @@ pub fn spawn_cards(
 
 pub fn check_for_turn_ready(
     pending_actions: Query<(Entity, &CardActionType)>,
+    hand: Query<&Hand>,
+    realized: Query<&Realized>,
     mut pending_action_count: Local<usize>,
     mut next_turn_state: ResMut<NextState<TurnState>>,
 ) {
     if pending_actions.iter().len() != *pending_action_count {
-        info!("Checking for turn ready. {} actions remain", pending_actions.iter().len());
         *pending_action_count = pending_actions.iter().len();
-        for (e, t) in pending_actions.iter() {
-            info!("{:?} | {:?}", t, e);
-        }
     }
 
     if pending_actions.iter().len() == 0 {
-        info!("Turn is ready");
+        for card_instance in hand.single().0.iter() {
+            if let Some(card_instance_id) = card_instance {
+                if realized.get(*card_instance_id).is_err() {
+                    return;
+                }
+            }
+        }
         next_turn_state.set(TurnState::Started);
     }
 }
@@ -62,6 +69,22 @@ fn print_cards_in_deck(
 ) {
     let deck = deck.get_single().expect("Should be exactly 1 deck");
     info!("Cards in deck: {:?}", deck.cards);
+}
+
+fn cleanup_temporary_state(
+    mut commands: Commands,
+    card_instances: Query<Entity, With<BaseCardInfo>>,
+) {
+    for card_instance_id in card_instances.iter() {
+        commands.entity(card_instance_id)
+            .remove::<Realized>()
+            .remove::<Playable>()
+            .remove::<NeedsEnergy>()
+            .remove::<NeedsMoveable>()
+            .remove::<NeedsWater>()
+            .remove::<NeedsRotate>()
+            .remove::<WasPlayed>();
+    }
 }
 
 pub struct GamePlugin;
@@ -94,7 +117,8 @@ impl Plugin for GamePlugin {
                 .run_if(in_state(GameState::Playing)
             ))
             .add_systems(Update, (
-                check_for_turn_ready
+                check_for_turn_ready,
+                realize_card_instances,
                 )
                 .run_if(in_state(GameState::Playing))
                 .run_if(in_state(TurnState::Starting)))
@@ -107,6 +131,7 @@ impl Plugin for GamePlugin {
             ))
             .add_systems(OnEnter(TurnState::Animating), (
                 animate_cards,
+                cleanup_temporary_state,
             ))
             .add_systems(Update, (
                 check_for_turn_over
@@ -127,7 +152,6 @@ impl Plugin for GamePlugin {
                 sync_deck, 
                 sync_hand, 
                 log_playability_changes,
-                realize_card_instances
                 ).run_if(in_state(GameState::Playing)))
             ;
     }

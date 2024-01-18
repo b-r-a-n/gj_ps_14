@@ -22,3 +22,5 @@ opt-level = 'z'
 
 [dependencies]
 bevy = "0.12"
+rand = "0.8"
+getrandom = { version = "0.2", features = ["js"] }

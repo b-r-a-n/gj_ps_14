@@ -53,4 +53,17 @@ impl GamePosition {
         }
         positions
     }
+    pub fn rotated(&self, rotation: &Rotation) -> Self {
+        match (&self.d, rotation) {
+                (GameDirection::Up, Rotation::Right) => Self { d: GameDirection::Right, ..self.clone() },
+                (GameDirection::Down, Rotation::Right) => Self { d: GameDirection::Left, ..self.clone() },
+                (GameDirection::Left, Rotation::Right) => Self { d: GameDirection::Up, ..self.clone() },
+                (GameDirection::Right, Rotation::Right) => Self { d: GameDirection::Down, ..self.clone() },
+                (GameDirection::Up, Rotation::Left) => Self { d: GameDirection::Left, ..self.clone() },
+                (GameDirection::Down, Rotation::Left) => Self { d: GameDirection::Right, ..self.clone() },
+                (GameDirection::Left, Rotation::Left) => Self { d: GameDirection::Down, ..self.clone() },
+                (GameDirection::Right, Rotation::Left) => Self { d: GameDirection::Up, ..self.clone() },
+                (_, Rotation::None) => self.clone(),
+        }
+    }
 }

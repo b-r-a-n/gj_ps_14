@@ -58,11 +58,22 @@ pub struct Deck {
     pub discarded: Vec<Entity>,
 }
 
+use rand::seq::SliceRandom;
+use rand::thread_rng;
+
 impl Deck {
     pub fn add(&mut self, card: Entity) {
         self.cards.push(card);
     }
+    pub fn shuffle(&mut self) {
+        let mut rng = thread_rng();
+        self.cards.shuffle(&mut rng);
+    }
     pub fn draw(&mut self) -> Option<Entity> {
+        if self.cards.is_empty(){
+            self.cards = self.recycled.drain(..).collect();
+            self.shuffle();
+        }
         self.cards.pop()
     }
     pub fn recycle(&mut self, card: Entity) {
@@ -85,6 +96,21 @@ pub fn sync_deck(
             commands.entity(*card).insert(InDeck);
         }
     }
+}
+
+pub fn fill_hand_with_cards(
+    mut commands: Commands,
+    deck: Query<(Entity, &Deck), With<Player>>,
+    hand: Query<(Entity, &Hand), With<Player>>,
+) {
+    let (hand_id, hand) = hand.get_single().expect("Should be exactly 1 hand");
+    let (deck_id, _) = deck.get_single().expect("Should be exactly 1 deck");
+    (0..hand.empty_slots()).for_each(|_| {
+        commands.spawn(CardActionType::Draw(Draw {
+            deck: deck_id,
+            hand: hand_id,
+        }));
+    });
 }
 
 #[derive(Component)]
@@ -162,6 +188,7 @@ pub struct ResourceInfo {
     pub water: u32,
 }
 
+#[derive(Debug)]
 pub enum Rotation {
     None,
     Left,
@@ -228,6 +255,12 @@ pub struct NeedsWater(pub i32);
 #[derive(Component, Debug)]
 pub struct NeedsMoveable(pub Vec<Entity>);
 
+#[derive(Component, Debug)]
+pub struct NeedsRotate(pub Rotation);
+
+#[derive(Component, Debug)]
+pub struct Realized;
+
 pub fn realize_card_instances(
     mut commands: Commands,
     player_pos: Query<&GamePosition, With<Player>>,
@@ -249,7 +282,9 @@ pub fn realize_card_instances(
         match card_info.position_change.position {
             TileTarget::None => {},
             TileTarget::Offset(dist) => { 
-                let tile_id = tile_grid.single().get(&origin.offset(dist));
+                let target_pos = origin.offset(dist);
+                let tile_id = tile_grid.single().get(&target_pos);
+                info!("Card {:?} needs to move to {:?} which has entity: {:?}", entity, target_pos, tile_id);
                 commands.entity(entity)
                     .insert(NeedsMoveable(vec![tile_id])); 
             },
@@ -263,6 +298,18 @@ pub fn realize_card_instances(
             },
             _ => {},
         }
+        match card_info.position_change.rotation {
+            Rotation::Left => {
+                commands.entity(entity)
+                    .insert(NeedsRotate(Rotation::Left));
+            },
+            Rotation::Right => {
+                commands.entity(entity)
+                    .insert(NeedsRotate(Rotation::Right));
+            },
+            _ => {},
+        }
+        commands.entity(entity).insert(Realized);
     }
 }
 

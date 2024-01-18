@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Component, Debug)]
 pub struct Draw {
     pub deck: Entity,
     pub hand: Entity,
@@ -107,13 +107,13 @@ pub fn apply_card (
     mut turn_state: ResMut<NextState<TurnState>>,
     player: Query<(Entity, &Energy, &Water), With<Player>>,
     played_cards: Query<(Entity, &WasPlayed)>,
-    card_instances: Query<(Option<&NeedsEnergy>, Option<&NeedsWater>, Option<&NeedsMoveable>)>,
+    card_instances: Query<(Option<&NeedsEnergy>, Option<&NeedsWater>, Option<&NeedsMoveable>, Option<&NeedsRotate>)>,
     game_positions: Query<&GamePosition>,
 ) {
     let (player_id, energy, water) = player.get_single().expect("There should only be one player");
     for (was_played_id, played_card) in played_cards.iter() {
         let card_instance_id = played_card.0;
-        let (energy_need, water_need, moveable_tiles) = card_instances.get(card_instance_id)
+        let (energy_need, water_need, moveable_tiles, rotation) = card_instances.get(card_instance_id)
             .expect("Failed to get card instance");
         println!("Card {:?} {:?} {:?} {:?} was played", card_instance_id, energy_need, water_need, moveable_tiles);
         if let Some(energy_need) = energy_need {
@@ -147,6 +147,14 @@ pub fn apply_card (
                     }
                 });
             }
+        }
+        if let Some(rotation) = rotation {
+            let base_pos = game_positions.get(player_id)
+                .expect("Failed to get player position");
+            commands.spawn(Change {
+                entity: player_id,
+                updated_value: base_pos.rotated(&rotation.0)
+            });
         }
         turn_state.set(TurnState::Animating);
         commands.entity(was_played_id).despawn_recursive();

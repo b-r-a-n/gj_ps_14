@@ -69,10 +69,6 @@ impl bevy::ecs::system::Command for SpawnPlayer {
                 recycled: vec![],
                 discarded: vec![],
             },
-            Stats {
-                energy_regeneration: 20,
-                water_regeneration: 5,
-            },
             Hand([None; 5]),
         ));
     }

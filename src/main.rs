@@ -1,6 +1,6 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, core::FrameCount};
 use game::*;
-use ui::{UIPlugins, energy::*, hand::*};
+use ui::{UIPlugins, energy::*, hand::{*, self}};
 use camera::*;
 
 mod camera;
@@ -54,6 +54,7 @@ fn handle_input(
                 deck: entity,
                 hand: entity,
             }));
+
         }
 
         Some(x) if x < &KeyCode::Key6 => {
@@ -125,33 +126,6 @@ fn handle_input(
     }
 }
 
-
-#[derive(Component)]
-pub struct Stats {
-    pub energy_regeneration: i32,
-    pub water_regeneration: i32,
-}
-
-#[derive(Component)]
-pub struct Completed;
-
-pub fn fill_hand_with_cards(
-    mut commands: Commands,
-    deck: Query<(Entity, &Deck), With<Player>>,
-    hand: Query<(Entity, &Hand), With<Player>>,
-) {
-    let (hand_id, hand) = hand.get_single().expect("Should be exactly 1 hand");
-    let (deck_id, _) = deck.get_single().expect("Should be exactly 1 deck");
-
-    println!("Filling hand");
-
-    (0..hand.empty_slots()).for_each(|_| {
-        commands.spawn(CardActionType::Draw(Draw {
-            deck: deck_id,
-            hand: hand_id,
-        }));
-    });
-}
 
 fn print_state_change<T: States>(
     state: Res<State<T>>,
