@@ -1,3 +1,5 @@
+use self::ui::energy;
+
 use super::*;
 
 #[derive(Component, Debug)]
@@ -123,60 +125,26 @@ pub fn log_playability_changes(
     for entity in added_playable.iter() {
         info!("Card {:?} is now playable", entity);
     }
-    for entity in removed_playable.iter() {
+    for entity in removed_playable.read() {
         info!("Card {:?} is no longer playable", entity);
-    }
-}
-
-pub fn log_playable(
-    cards: Query<(Entity, Option<&NeedsEnergy>, Option<&NeedsWater>, Option<&NeedsMoveable>, Option<&InHand>, &BaseCardInfo), With<Playable>>,
-) {
-    info!("Waiting for input with playable cards:");
-    for (card_instance_id, energy_cost, water_cost, moveable, in_hand, _) in cards.iter() {
-        info!("Card {:?} | Energy: {:?} | Water: {:?} | Moveable: {:?} | In Hand: {:?}", card_instance_id, energy_cost, water_cost, moveable, in_hand);
     }
 }
 
 pub fn update_playable(
     mut commands: Commands,
-    cards: Query<(Entity, Option<&NeedsEnergy>, Option<&NeedsWater>, Option<&NeedsMoveable>, Option<&InHand>, Option<&WasPlayed>, &BaseCardInfo)>,
-    energy: Query<&Energy, With<Player>>,
-    water: Query<&Water, With<Player>>,
-    blocked_tiles: Query<&GamePosition, With<BlockedTile>>,
-    position: Query<&GamePosition, With<Player>>,
+    card_instances: Query<(Entity, Option<&InHand>), With<BaseCardInfo>>,
+    needs_something: Query<Entity, Or<(With<NeedsEnergy>, With<NeedsWater>, With<NeedsMoveable>)>>,
 ) {
-    let energy = energy.get_single().expect("Should be exactly 1 energy");
-    let water = water.get_single().expect("Should be exactly 1 energy");
-    let _ = position.get_single().expect("Should be exactly 1 position");
-    for (card_instance_id, energy_cost, water_cost, moveable, in_hand, was_played, _) in cards.iter() {
-        if in_hand.is_none() || was_played.is_some() {
+    for (card_instance_id, in_hand) in card_instances.iter() {
+        if in_hand.is_none() {
             commands.entity(card_instance_id).remove::<Playable>();
             continue;
         }
-        if energy_cost.is_some_and(|c| c.0 > energy.current) 
-        || water_cost.is_some_and(|c| c.0 > water.current) {
+        if needs_something.contains(card_instance_id) {
             commands.entity(card_instance_id).remove::<Playable>();
             continue;
         }
-        // Need at least one moveable tile
-        if let Some(moves) = moveable {
-            if moves.0.is_empty() {
-                continue;
-            }
-            let mut unblocked_tile = false;
-            for tile_id in moves.0.iter() {
-                if blocked_tiles.get(*tile_id).is_err() {
-                    unblocked_tile = true;
-                    break;
-                }
-            }
-            if !unblocked_tile {
-                commands.entity(card_instance_id).remove::<Playable>();
-                continue;
-            }
-        }
-        commands.entity(card_instance_id)
-            .insert(Playable);
+        commands.entity(card_instance_id).insert(Playable);
     }
 }
 
@@ -184,8 +152,8 @@ pub fn update_playable(
 pub struct Playable;
 
 pub struct ResourceInfo {
-    pub energy: u32,
-    pub water: u32,
+    pub energy: i32,
+    pub water: i32,
 }
 
 #[derive(Debug)]
@@ -255,71 +223,140 @@ pub struct NeedsWater(pub i32);
 #[derive(Component, Debug)]
 pub struct NeedsMoveable(pub Vec<Entity>);
 
-#[derive(Component, Debug)]
-pub struct NeedsRotate(pub Rotation);
-
-#[derive(Component, Debug)]
-pub struct Realized;
-
-pub fn realize_card_instances(
-    mut commands: Commands,
-    player_pos: Query<&GamePosition, With<Player>>,
-    tile_grid: Query<&Grid>,
-    card_instances: Query<(Entity, &BaseCardInfo), With<InHand>>,
-    card_infos: Query<&CardInfo>,
+pub fn update_movement_needs(
+    commands: &mut Commands,
+    card_instance_id: Entity,
+    base_card_infos: &Query<&BaseCardInfo>,
+    card_infos: &Query<&CardInfo>,
+    player_pos: &GamePosition,
+    tile_grid: &Grid,
+    blocked_tiles: &Query<&BlockedTile>,
 ) {
-    // TODO: This is running every frame
-    // Hopefully, introducing some states will allow more efficient scheduling
-    for (entity, base_card_info) in card_instances.iter() {
-        let card_info = card_infos.get(base_card_info.0).expect("Missing card info");
-        let origin = player_pos.get_single().expect("Should be exactly 1 player position");
-        if card_info.resource_cost.energy > 0 {
-            commands.entity(entity).insert(NeedsEnergy(card_info.resource_cost.energy as i32));
+    let base_card_info = base_card_infos.get(card_instance_id).expect("Missing base card info");
+    let card_info = card_infos.get(base_card_info.0).expect("Missing card info");
+    match &card_info.position_change {
+        MovementInfo { position: TileTarget::Offset(dist), rotation: rot} => {
+            let target_pos = player_pos.rotated(rot).offset(*dist);
+            let tile_id = tile_grid.get(&target_pos);
+            if blocked_tiles.get(tile_id).is_ok() {
+                commands.entity(card_instance_id)
+                    .insert(NeedsMoveable(vec![tile_id]));
+            } else {
+                commands.entity(card_instance_id)
+                    .remove::<NeedsMoveable>();
+            }
         }
-        if card_info.resource_cost.water > 0 {
-            commands.entity(entity).insert(NeedsWater(card_info.resource_cost.energy as i32));
-        }
-        match card_info.position_change.position {
-            TileTarget::None => {},
-            TileTarget::Offset(dist) => { 
-                let target_pos = origin.offset(dist);
-                let tile_id = tile_grid.single().get(&target_pos);
-                info!("Card {:?} needs to move to {:?} which has entity: {:?}", entity, target_pos, tile_id);
-                commands.entity(entity)
-                    .insert(NeedsMoveable(vec![tile_id])); 
-            },
-            TileTarget::Adjacent(radius) => {
-                let adjacent_tile_positions = origin.adjacent(radius as i32);
-                let tile_ids: Vec<Entity> = adjacent_tile_positions.iter()
-                    .map(|pos| tile_grid.single().get(pos))
-                    .collect();
-                commands.entity(entity)
-                    .insert(NeedsMoveable(tile_ids));
-            },
-            _ => {},
-        }
-        match card_info.position_change.rotation {
-            Rotation::Left => {
-                commands.entity(entity)
-                    .insert(NeedsRotate(Rotation::Left));
-            },
-            Rotation::Right => {
-                commands.entity(entity)
-                    .insert(NeedsRotate(Rotation::Right));
-            },
-            _ => {},
-        }
-        commands.entity(entity).insert(Realized);
+        _ => {}
     }
 }
 
+pub fn update_resource_needs(
+    commands: &mut Commands,
+    card_instance_id: Entity,
+    base_card_infos: &Query<&BaseCardInfo>,
+    card_infos: &Query<&CardInfo>,
+    player_energy: &Energy,
+    player_water: &Water,
+) {
+    let base_card_info = base_card_infos.get(card_instance_id).expect("Missing base card info");
+    let card_info = card_infos.get(base_card_info.0).expect("Missing card info");
+    if card_info.resource_cost.energy > player_energy.current {
+        commands.entity(card_instance_id)
+            .insert(NeedsEnergy(card_info.resource_cost.energy - player_energy.current));
+    } else {
+        commands.entity(card_instance_id)
+            .remove::<NeedsEnergy>();
+    }
+    if card_info.resource_cost.water > player_water.current {
+        commands.entity(card_instance_id)
+            .insert(NeedsWater(card_info.resource_cost.water - player_water.current));
+    } else {
+        commands.entity(card_instance_id)
+            .remove::<NeedsWater>();
+    }
+}
+
+pub fn handle_resource_change(
+    mut commands: Commands,
+    card_instances_to_check: Query<Entity, With<InHand>>,
+    base_card_infos: Query<&BaseCardInfo>,
+    card_infos: Query<&CardInfo>,
+    player_energy_changes: Query<&Energy, (With<Player>, Changed<Energy>)>,
+    player_water_changes: Query<&Water, (With<Player>, Changed<Water>)>,
+) {
+    if player_energy_changes.is_empty() && player_water_changes.is_empty() {
+        return;
+    }
+    for card_instance_id in card_instances_to_check.iter() {
+        update_resource_needs(
+            &mut commands,
+            card_instance_id,
+            &base_card_infos,
+            &card_infos,
+            player_energy_changes.get_single().expect("Should be exactly 1 player energy"),
+            player_water_changes.get_single().expect("Should be exactly 1 player water"));
+    }
+}
+
+pub fn handle_card_added_to_hand(
+    mut commands: Commands,
+    card_instances_to_check: Query<Entity, Added<InHand>>,
+    base_card_infos: Query<&BaseCardInfo>,
+    card_infos: Query<&CardInfo>,
+    player_energy: Query<&Energy, With<Player>>,
+    player_water: Query<&Water, With<Player>>,
+    player_pos: Query<&GamePosition, With<Player>>,
+    tile_grid: Query<&Grid>,
+    blocked_tiles: Query<&BlockedTile>,
+) {
+
+    for card_instance_id in card_instances_to_check.iter() {
+        update_resource_needs(
+            &mut commands,
+            card_instance_id,
+            &base_card_infos,
+            &card_infos,
+            player_energy.get_single().expect("Should be exactly 1 player energy"),
+            player_water.get_single().expect("Should be exactly 1 player water"));
+        update_movement_needs(
+            &mut commands,
+            card_instance_id,
+            &base_card_infos,
+            &card_infos,
+            player_pos.get_single().expect("Should be exactly 1 player position"),
+            tile_grid.get_single().expect("Should be exactly 1 tile grid"),
+            &blocked_tiles,
+        );
+    }
+}
+
+pub fn handle_position_change(
+    mut commands: Commands,
+    card_instances_to_check: Query<Entity, With<InHand>>,
+    base_card_infos: Query<&BaseCardInfo>,
+    card_infos: Query<&CardInfo>,
+    player_position_changes: Query<&GamePosition, (With<Player>, Changed<GamePosition>)>,
+    tile_grid: Query<&Grid>,
+    blocked_tiles: Query<&BlockedTile>,
+) {
+    if player_position_changes.is_empty() {
+        return;
+    }
+    for card_instance_id in card_instances_to_check.iter() {
+        update_movement_needs(
+            &mut commands,
+            card_instance_id,
+            &base_card_infos,
+            &card_infos,
+            player_position_changes.get_single().expect("Should be exactly 1 player position"),
+            tile_grid.get_single().expect("Should be exactly 1 tile grid"),
+            &blocked_tiles,
+        );
+    }
+}
 
 pub enum TileTarget {
     Offset(i32),
-    Adjacent(u32),
-    SelectedOffset(i32),
-    SelectedAdjacent(u32),
-    None
 }
 
 pub fn make_grid(
@@ -375,7 +412,7 @@ pub fn load_card_infos(
                     water: 0,
                 },
                 position_change: MovementInfo {
-                    position: TileTarget::None,
+                    position: TileTarget::Offset(0),
                     rotation: Rotation::Right,
                 },
                 texture_index: 2,
@@ -388,7 +425,7 @@ pub fn load_card_infos(
                     water: 0,
                 },
                 position_change: MovementInfo {
-                    position: TileTarget::None,
+                    position: TileTarget::Offset(0),
                     rotation: Rotation::Left,
                 },
                 texture_index: 3,

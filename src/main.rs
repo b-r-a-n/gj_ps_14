@@ -1,6 +1,6 @@
-use bevy::{prelude::*, core::FrameCount};
+use bevy::prelude::*;
 use game::*;
-use ui::{UIPlugins, energy::*, hand::{*, self}};
+use ui::{UIPlugins, energy::*, hand::*};
 use camera::*;
 
 mod camera;
@@ -29,7 +29,7 @@ fn handle_input(
     player_state: Query<(Entity, &GamePosition, &Energy, &Hand), With<Player>>,
     game_state: Res<State<GameState>>,
     turn_state: Res<State<TurnState>>,
-    card_infos: Query<(Entity, &CardInfo)>
+    playables: Query<&Playable>
 ) {
     if keyboard_input.get_just_released().last().is_none() {
         return;
@@ -58,9 +58,15 @@ fn handle_input(
         }
 
         Some(x) if x < &KeyCode::Key6 => {
+            if turn_state.get() != &TurnState::WaitingForInput {
+                return;
+            }
             let (entity, _, _, hand) = player_state.get_single().expect("Should be exactly 1 player");
             let index = x.clone() as usize - KeyCode::Key1 as usize;
             if let Some(card) = hand.0[index] {
+                if playables.get(card).is_err() {
+                    return;
+                }
                 commands.spawn(CardActionType::Play(Play {
                     card,
                     deck: entity,

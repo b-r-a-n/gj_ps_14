@@ -107,54 +107,42 @@ pub fn apply_card (
     mut turn_state: ResMut<NextState<TurnState>>,
     player: Query<(Entity, &Energy, &Water), With<Player>>,
     played_cards: Query<(Entity, &WasPlayed)>,
-    card_instances: Query<(Option<&NeedsEnergy>, Option<&NeedsWater>, Option<&NeedsMoveable>, Option<&NeedsRotate>)>,
+    card_instances: Query<&BaseCardInfo>,
+    card_infos: Query<&CardInfo>,
     game_positions: Query<&GamePosition>,
 ) {
     let (player_id, energy, water) = player.get_single().expect("There should only be one player");
     for (was_played_id, played_card) in played_cards.iter() {
         let card_instance_id = played_card.0;
-        let (energy_need, water_need, moveable_tiles, rotation) = card_instances.get(card_instance_id)
-            .expect("Failed to get card instance");
-        println!("Card {:?} {:?} {:?} {:?} was played", card_instance_id, energy_need, water_need, moveable_tiles);
-        if let Some(energy_need) = energy_need {
-            commands.spawn(Change {
-                entity: player_id,
-                updated_value: Energy {
-                    current: energy.current - energy_need.0,
-                    ..energy.clone()
-                }
-            });
-        }
-        if let Some(water_need) = water_need {
-            commands.spawn(Change {
-                entity: player_id,
-                updated_value: Water {
-                    current: water.current - water_need.0,
-                    ..water.clone()
-                }
-            });
-        }
-        if let Some(tiles) = moveable_tiles {
-            if let Some(tile_id) = tiles.0.first() {
-                let tile_pos = game_positions.get(*tile_id)
-                    .expect("Failed to get tile position");
+        let card_info_id = card_instances.get(card_instance_id)
+            .expect("Failed to get card instance").0;
+        let card_info = card_infos.get(card_info_id)
+            .expect("Failed to get card info");
+        commands.spawn(Change {
+            entity: player_id,
+            updated_value: Energy {
+                current: energy.current - card_info.resource_cost.energy,
+                ..energy.clone()
+            }
+        });
+        commands.spawn(Change {
+            entity: player_id,
+            updated_value: Water {
+                current: water.current - card_info.resource_cost.water,
+                ..water.clone()
+            }
+        });
+        match &card_info.position_change {
+            MovementInfo { position: TileTarget::Offset(dist), rotation: rot} => {
+                let base_pos = game_positions.get(player_id)
+                    .expect("Failed to get player position");
+                let new_pos = base_pos.rotated(&rot).offset(*dist);
                 commands.spawn(Change {
                     entity: player_id,
-                    updated_value: GamePosition {
-                        x: tile_pos.x,
-                        y: tile_pos.y,
-                        d: tile_pos.d.clone(),
-                    }
+                    updated_value: new_pos
                 });
             }
-        }
-        if let Some(rotation) = rotation {
-            let base_pos = game_positions.get(player_id)
-                .expect("Failed to get player position");
-            commands.spawn(Change {
-                entity: player_id,
-                updated_value: base_pos.rotated(&rotation.0)
-            });
+            _ => {},
         }
         turn_state.set(TurnState::Animating);
         commands.entity(was_played_id).despawn_recursive();

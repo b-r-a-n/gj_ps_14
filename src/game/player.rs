@@ -9,12 +9,13 @@ pub struct SpawnPlayer {
     pub y: i32,
     pub facing_direction: GameDirection,
     pub max_energy: i32,
+    pub max_water: i32,
 }
 
 pub fn spawn_player(
     mut commands: Commands
 ) {
-    commands.add(SpawnPlayer { max_energy: 100, ..default() });
+    commands.add(SpawnPlayer { max_energy: 10, max_water: 10, ..default() });
 }
 
 #[derive(Resource)]
@@ -55,8 +56,8 @@ impl bevy::ecs::system::Command for SpawnPlayer {
                 maxium: self.max_energy,
             },
             Water {
-                current: self.max_energy/2,
-                maxium: self.max_energy,
+                current: self.max_water/2,
+                maxium: self.max_water,
             },
             SpriteSheetBundle {
                 sprite: TextureAtlasSprite::new(0),
