@@ -90,11 +90,12 @@ pub struct Change<T: Component + Clone> {
 
 pub fn apply_change<T: Component + Clone>(
     mut commands: Commands,
-    actions: Query<&Change<T>>, 
+    actions: Query<(Entity, &Change<T>)>, 
 ) {
-    for action in actions.iter() {
+    for (action_id, action) in actions.iter() {
+        commands.entity(action_id)
+            .remove::<Change<T>>();
         commands.entity(action.entity)
-            .remove::<Change<T>>()
             .insert(action.updated_value.clone());
     }
 }

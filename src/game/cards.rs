@@ -281,8 +281,10 @@ pub fn handle_resource_change(
     card_instances_to_check: Query<Entity, With<InHand>>,
     base_card_infos: Query<&BaseCardInfo>,
     card_infos: Query<&CardInfo>,
-    player_energy_changes: Query<&Energy, (With<Player>, Changed<Energy>)>,
-    player_water_changes: Query<&Water, (With<Player>, Changed<Water>)>,
+    player_energy_changes: Query<Entity, (With<Player>, Changed<Energy>)>,
+    player_water_changes: Query<Entity, (With<Player>, Changed<Water>)>,
+    energies: Query<&Energy, With<Player>>,
+    waters: Query<&Water, With<Player>>,
 ) {
     if player_energy_changes.is_empty() && player_water_changes.is_empty() {
         return;
@@ -293,8 +295,8 @@ pub fn handle_resource_change(
             card_instance_id,
             &base_card_infos,
             &card_infos,
-            player_energy_changes.get_single().expect("Should be exactly 1 player energy"),
-            player_water_changes.get_single().expect("Should be exactly 1 player water"));
+            energies.get_single().expect("Should be exactly 1 player energy"),
+            waters.get_single().expect("Should be exactly 1 player water"));
     }
 }
 
@@ -357,22 +359,6 @@ pub fn handle_position_change(
 
 pub enum TileTarget {
     Offset(i32),
-}
-
-pub fn make_grid(
-    mut commands: Commands,
-) {
-    let mut grid = Vec::new();
-    for x in 0..100 {
-        let mut row = Vec::new();
-        for y in 0..100 {
-            row.push(
-                commands.spawn((GamePosition { x, y, ..default() }, Moveable)).id()
-            );
-        }
-        grid.push(row);
-    }
-    commands.spawn(Grid(grid));
 }
 
 pub fn load_card_infos(

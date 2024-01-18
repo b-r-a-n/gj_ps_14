@@ -28,12 +28,13 @@ pub struct NextTurnState;
 
 pub fn check_for_turn_over(
     mut commands: Commands,
+    mut next_turn_state: ResMut<NextState<TurnState>>,
     playable_cards: Query<Entity, (With<InHand>, With<Playable>)>,
     mut last_playable_count: Local<usize>,
 ) {
     if playable_cards.is_empty() {
         info!("Turn is over");
-        commands.spawn(NextTurnState);
+        next_turn_state.set(TurnState::Ended);
     } else {
         let current_playable_count = playable_cards.iter().len();
         if current_playable_count != *last_playable_count {

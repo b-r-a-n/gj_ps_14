@@ -4,8 +4,10 @@ pub use actions::*;
 pub use cards::*;
 pub use game::*;
 pub use player::*;
+use rand::Rng;
 pub use stats::*;
 pub use card::*;
+pub use tiles::*;
 
 mod actions;
 mod cards;
@@ -13,6 +15,7 @@ mod card;
 mod game;
 mod player;
 mod stats;
+mod tiles;
 
 pub fn add_cards_to_deck(
     mut deck: Query<&mut Deck, With<Player>>,
@@ -66,6 +69,15 @@ fn cleanup_temporary_state(
     }
 }
 
+fn restore_energy(
+    mut energy: Query<&mut Energy, With<Player>>,
+) {
+    let mut energy = energy.get_single_mut().expect("Should be exactly 1 energy");
+    info!("Restoring energy from {:?} to {:?}", energy.current, energy.maxium/2);
+    energy.current = energy.maxium/2;
+}
+
+
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
@@ -73,19 +85,21 @@ impl Plugin for GamePlugin {
         app
             .init_resource::<PlayerSpriteSheet>()
             .init_resource::<CardSpriteSheet>()
+            .init_resource::<TileSpriteSheet>()
             .add_state::<GameState>()
             .add_state::<TurnState>()
             .add_systems(Startup, (
                 load_card_infos, 
-                make_grid
             ))
             .add_systems(OnTransition { from: GameState::Menu, to: GameState::Loading }, (
                 spawn_player, 
                 spawn_cards,
+                spawn_tiles,
                 schedule_transition::<NextGameState>
             ))
             .add_systems(OnTransition { from: GameState::Loading, to: GameState::Playing }, (
                 add_cards_to_deck, 
+                add_random_fire_tiles,
                 schedule_transition::<NextTurnState>
             ))
             .add_systems(OnEnter(TurnState::Starting), (
@@ -100,6 +114,7 @@ impl Plugin for GamePlugin {
                 .run_if(in_state(GameState::Playing))
                 .run_if(in_state(TurnState::Starting)))
             .add_systems(OnEnter(TurnState::Started), (
+                restore_energy,
                 schedule_transition::<NextTurnState>
                 ).run_if(in_state(GameState::Playing)))
             .add_systems(OnEnter(TurnState::Animating), (
@@ -116,6 +131,9 @@ impl Plugin for GamePlugin {
                 transition::<GameState, NextGameState>,
                 transition::<TurnState, NextTurnState>
             ))
+            .add_systems(OnEnter(TurnState::Ended), 
+                schedule_transition::<NextTurnState>
+            )
             .add_systems(Update, (
                 apply_change::<GamePosition>, 
                 apply_change::<Energy>, 
@@ -129,6 +147,7 @@ impl Plugin for GamePlugin {
                 handle_resource_change,
                 handle_position_change,
                 log_playability_changes,
+                update_tiles,
                 ).run_if(in_state(GameState::Playing)))
             ;
     }

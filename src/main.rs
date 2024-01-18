@@ -25,10 +25,10 @@ fn update_position_transforms(
 fn handle_input(
     keyboard_input: Res<Input<KeyCode>>,
     mut commands: Commands,
-    mut decks: Query<&mut Deck>,
+    turn_state: Res<State<TurnState>>,
+    mut next_turn_state: ResMut<NextState<TurnState>>,
     player_state: Query<(Entity, &GamePosition, &Energy, &Hand), With<Player>>,
     game_state: Res<State<GameState>>,
-    turn_state: Res<State<TurnState>>,
     playables: Query<&Playable>
 ) {
     if keyboard_input.get_just_released().last().is_none() {
@@ -45,7 +45,7 @@ fn handle_input(
             if game_state.get() == &GameState::Menu {
                 commands.spawn(NextGameState);
             } else if turn_state.get() == &TurnState::WaitingForInput {
-                commands.spawn(NextTurnState);
+                next_turn_state.set(TurnState::Ended);
             }
         }
         Some(KeyCode::Space) => {

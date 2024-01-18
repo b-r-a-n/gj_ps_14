@@ -41,5 +41,6 @@ pub fn update_energy_ui(
         .expect("Found more than one player energy");
     let mut text = text.get_single_mut()
         .expect("Found more than one energy UI text");
+    info!("Energy changed to {:?}", energy.current);
     text.sections[0].value = format!("Energy: {}/{}", energy.current, energy.maxium);
 }

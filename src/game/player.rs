@@ -15,7 +15,7 @@ pub struct SpawnPlayer {
 pub fn spawn_player(
     mut commands: Commands
 ) {
-    commands.add(SpawnPlayer { max_energy: 10, max_water: 10, ..default() });
+    commands.add(SpawnPlayer { x: 1, y: 1, max_energy: 10, max_water: 10, ..default() });
 }
 
 #[derive(Resource)]
