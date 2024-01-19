@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use game::*;
-use ui::{MenuUIPlugin, LevelUIPlugin, energy::*, hand::*};
+use ui::*;
 use camera::*;
 
 mod camera;
@@ -89,60 +89,6 @@ fn handle_input(
                 camera_transform.single_mut().translation.x += 64.0;
             }
         },
-        /*
-        Some(KeyCode::Up) => {
-            commands.spawn((
-                Change {
-                    entity,
-                    updated_value: GamePosition {
-                        y: position.y + 1,
-                        d: GameDirection::Up,
-                        ..position.clone()
-                    },
-                },
-                energy_change,
-            ));
-        },
-        Some(KeyCode::Down) => {
-            commands.spawn((
-                Change {
-                    entity,
-                    updated_value: GamePosition {
-                        y: position.y - 1,
-                        d: GameDirection::Down,
-                        ..position.clone()
-                    },
-                },
-                energy_change,
-            ));
-        },
-        Some(KeyCode::Left) => {
-            commands.spawn((
-                Change {
-                    entity,
-                    updated_value: GamePosition {
-                        x: position.x - 1,
-                        d: GameDirection::Left,
-                        ..position.clone()
-                    },
-                },
-                energy_change,
-            ));
-        },
-        Some(KeyCode::Right) => {
-            commands.spawn((
-                Change {
-                    entity,
-                    updated_value: GamePosition {
-                        x: position.x + 1,
-                        d: GameDirection::Right,
-                        ..position.clone()
-                    },
-                },
-                energy_change,
-            ));
-        },
-        */
         _ => {},
     }
 }
@@ -162,6 +108,49 @@ enum AppState {
     Game,
 }
 
+fn handle_main_menu_events(
+    mut commands: Commands,
+    mut events: EventReader<MainMenuEvent>,
+    mut app_state: ResMut<NextState<AppState>>,
+    mut game_state: ResMut<NextState<GameState>>,
+    windows: Query<(Entity, &Window)>,
+) {
+    for event in events.read() {
+        match event {
+            MainMenuEvent::NewGamePressed => {
+                app_state.set(AppState::LevelMenu);
+                game_state.set(GameState::Loading);
+            },
+            MainMenuEvent::ExitPressed => {
+                for (window_id, window) in windows.iter() {
+                    if !window.focused {
+                        continue;
+                    }
+                    commands.entity(window_id).despawn_recursive();
+                } 
+            },
+        }
+    }
+}
+
+fn handle_level_menu_events(
+    mut events: EventReader<LevelMenuEvent>,
+    mut app_state: ResMut<NextState<AppState>>,
+    mut game_state: ResMut<NextState<GameState>>,
+) {
+    for event in events.read() {
+        match event {
+            LevelMenuEvent::PlayPressed => {
+                app_state.set(AppState::Game);
+            },
+            LevelMenuEvent::BackPressed => {
+                app_state.set(AppState::MainMenu);
+                game_state.set(GameState::None);
+            },
+        }
+    }
+}
+
 fn main() {
     App::new()
         .add_state::<AppState>()
@@ -170,6 +159,20 @@ fn main() {
         .add_plugins(MenuUIPlugin)
         .add_plugins(LevelUIPlugin)
         .add_plugins(GamePlugin)
+
+        .add_systems(Update, (handle_main_menu_events)
+            .run_if(in_state(AppState::MainMenu)))
+        .add_systems(OnEnter(AppState::MainMenu), main_menu::spawn)
+        .add_systems(OnExit(AppState::MainMenu), main_menu::despawn)
+
+        .add_systems(Update, (handle_level_menu_events)
+            .run_if(in_state(AppState::LevelMenu)))
+        .add_systems(OnEnter(AppState::LevelMenu), level_menu::spawn)
+        .add_systems(OnExit(AppState::LevelMenu), level_menu::despawn)
+
+        .add_systems(OnEnter(AppState::Game), spawn_level)
+        .add_systems(OnExit(AppState::Game), despawn_level)
+
         .add_systems(Update, handle_input)
         .add_systems(PostUpdate, update_position_transforms.before(bevy::transform::TransformSystem::TransformPropagate))
         .run();

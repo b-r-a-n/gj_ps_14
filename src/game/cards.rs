@@ -385,9 +385,23 @@ pub enum TileTarget {
     Offset(i32),
 }
 
-pub fn load_card_infos(
+// ContentID is useful when trying to serialize/deserialize the game state
+#[derive(Component, Eq, PartialEq, Hash)]
+pub struct ContentID(pub usize);
+
+pub fn despawn_card_infos(
+    mut commands: Commands,
+    card_infos: Query<Entity, With<CardInfo>>,
+) {
+    for entity in card_infos.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
+}
+
+pub fn spawn_card_infos(
     mut commands: Commands,
 ) {
+    // TODO: This info will eventually come from some sort of asset stored on disk
     commands.spawn_batch(vec![
         (
             CardInfo {
@@ -401,6 +415,7 @@ pub fn load_card_infos(
                 },
                 texture_index: 0,
             },
+            ContentID(1),
         ),
         (
             CardInfo {
@@ -414,6 +429,7 @@ pub fn load_card_infos(
                 },
                 texture_index: 1,
             },
+            ContentID(2),
         ),
         (
             CardInfo {
@@ -427,6 +443,7 @@ pub fn load_card_infos(
                 },
                 texture_index: 2,
             },
+            ContentID(3),
         ),
         (
             CardInfo {
@@ -440,6 +457,7 @@ pub fn load_card_infos(
                 },
                 texture_index: 3,
             },
+            ContentID(4),
         ),
     ]);
 

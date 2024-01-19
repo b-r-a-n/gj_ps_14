@@ -1,4 +1,10 @@
 use super::*;
+
+pub use main_menu::*;
+pub use level_menu::*;
+pub use energy::*;
+pub use hand::*;
+
 pub mod energy;
 pub mod hand;
 pub mod main_menu;
@@ -32,9 +38,8 @@ impl Plugin for GameUIPlugin {
 impl Plugin for MenuUIPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_systems(OnEnter(AppState::MainMenu), |mut commands: Commands| commands.add(main_menu::SpawnMenuUI))
-            .add_systems(OnExit(AppState::MainMenu), main_menu::despawn)
-            .add_systems(Update, (main_menu::handle_interactions).run_if(in_state(AppState::MainMenu)))
+            .add_event::<MainMenuEvent>()
+            .add_systems(Update, main_menu::handle_interactions)
         ;
     }
 }
@@ -42,9 +47,8 @@ impl Plugin for MenuUIPlugin {
 impl Plugin for LevelUIPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_systems(OnEnter(AppState::LevelMenu), |mut commands: Commands| commands.add(level_menu::SpawnMenuUI))
-            .add_systems(OnExit(AppState::LevelMenu), level_menu::despawn)
-            .add_systems(Update, (level_menu::handle_interactions).run_if(in_state(AppState::LevelMenu)))
+            .add_event::<LevelMenuEvent>()
+            .add_systems(Update, level_menu::handle_interactions)
         ;
     }
 }

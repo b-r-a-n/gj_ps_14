@@ -1,14 +1,20 @@
 use super::*;
 
-pub struct SpawnMenuUI;
+struct SpawnMenuUI;
 
 #[derive(Component)]
 pub struct MainMenu;
 
 #[derive(Component, Debug)]
-pub enum MenuOption {
+pub enum MainMenuOption {
     NewGame,
     Exit,
+}
+
+#[derive(Event)]
+pub enum MainMenuEvent {
+    NewGamePressed,
+    ExitPressed,
 }
 
 pub fn despawn(
@@ -20,24 +26,23 @@ pub fn despawn(
     }
 }
 
-pub fn handle_interactions(
+pub fn spawn(
     mut commands: Commands,
-    mut app_state: ResMut<NextState<AppState>>,
-    interaction_query: Query<(&Interaction, &MenuOption), (Changed<Interaction>, With<Button>)>,
-    windows: Query<(Entity, &Window)>,
+) {
+    commands.add(SpawnMenuUI);
+}
+
+pub fn handle_interactions(
+    mut events: EventWriter<MainMenuEvent>,
+    interaction_query: Query<(&Interaction, &MainMenuOption), (Changed<Interaction>, With<Button>)>,
 ) {
     for (interaction, option) in interaction_query.iter() {
         match (*interaction, option) {
-            (Interaction::Pressed, MenuOption::NewGame) => {
-                app_state.set(AppState::LevelMenu)
+            (Interaction::Pressed, MainMenuOption::NewGame) => {
+                events.send(MainMenuEvent::NewGamePressed);
             },
-            (Interaction::Pressed, MenuOption::Exit) => {
-                for (window_id, window) in windows.iter() {
-                    if !window.focused {
-                        continue;
-                    }
-                    commands.entity(window_id).despawn_recursive();
-                }
+            (Interaction::Pressed, MainMenuOption::Exit) => {
+                events.send(MainMenuEvent::ExitPressed);
             },
             _ => {},
         }
@@ -79,7 +84,7 @@ impl bevy::ecs::system::Command for SpawnMenuUI {
                     background_color: Color::TEAL.into(),
                     ..default()
                 },
-                MenuOption::NewGame,
+                MainMenuOption::NewGame,
             )).with_children(|button| {
                 button.spawn((
                     TextBundle::from_section(
@@ -100,7 +105,7 @@ impl bevy::ecs::system::Command for SpawnMenuUI {
                     background_color: Color::MAROON.into(),
                     ..default()
                 },
-                MenuOption::Exit,
+                MainMenuOption::Exit,
             )).with_children(|button| {
                 button.spawn((
                     TextBundle::from_section(

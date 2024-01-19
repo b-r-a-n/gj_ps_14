@@ -3,19 +3,19 @@ use super::*;
 #[derive(Component)]
 pub struct Player;
 
-#[derive(Default)]
-pub struct SpawnPlayer {
-    pub x: i32,
-    pub y: i32,
-    pub facing_direction: GameDirection,
-    pub max_energy: i32,
-    pub max_water: i32,
-}
-
 pub fn spawn_player(
     mut commands: Commands
 ) {
-    commands.add(SpawnPlayer { x: 1, y: 1, max_energy: 10, max_water: 10, ..default() });
+    commands.spawn(PlayerBundle::new());
+}
+
+pub fn despawn_player(
+    mut commands: Commands,
+    players: Query<Entity, With<Player>>,
+) {
+    for player_id in players.iter() {
+        commands.entity(player_id).despawn_recursive();
+    }
 }
 
 #[derive(Resource)]
@@ -41,36 +41,43 @@ impl FromWorld for PlayerSpriteSheet {
     }
 }
 
-impl bevy::ecs::system::Command for SpawnPlayer {
-    fn apply(self, world: &mut World) {
-        let sprite_sheet = world.get_resource::<PlayerSpriteSheet>()
-            .expect("Failed get the `PlayerSpriteSheet` resource from the `World`");
-        world.spawn((
-            GamePosition {
-                x: self.x,
-                y: self.y,
-                d: self.facing_direction,
-            },
-            Energy {
-                current: self.max_energy/2,
-                maxium: self.max_energy,
-            },
-            Water {
-                current: self.max_water/2,
-                maxium: self.max_water,
-            },
-            SpriteSheetBundle {
-                sprite: TextureAtlasSprite::new(0),
-                texture_atlas: sprite_sheet.0.clone(),
-                ..default()
-            },
-            Player,
-            Deck {
+#[derive(Bundle)]
+pub struct PlayerBundle {
+    player: Player,
+    game_position: GamePosition,
+    energy: Energy,
+    water: Water,
+    deck: Deck,
+    hand: Hand,
+}
+
+impl PlayerBundle {
+    pub fn new() -> Self {
+        Self {
+            player: Player,
+            game_position: GamePosition { x: 1, y: 1, d: GameDirection::Up },
+            energy: Energy { current: 0, maxium: 10 },
+            water: Water { current: 0, maxium: 10 },
+            deck: Deck {
                 cards: vec![],
                 recycled: vec![],
                 discarded: vec![],
             },
-            Hand([None; 5]),
-        ));
+            hand: Hand([None; 5]),
+        }
+    }
+}
+
+pub fn add_sprite(
+    mut commands: Commands,
+    sprite_sheet: Res<PlayerSpriteSheet>,
+    player_query: Query<Entity, With<Player>>,
+) {
+    for player_id in player_query.iter() {
+        commands.entity(player_id).insert(SpriteSheetBundle {
+            sprite: TextureAtlasSprite::new(0),
+            texture_atlas: sprite_sheet.0.clone(),
+            ..default()
+        });
     }
 }

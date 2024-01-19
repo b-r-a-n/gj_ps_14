@@ -1,7 +1,7 @@
 use super::*;
 
 pub use actions::*;
-use bevy::transform::commands;
+use bevy::utils::HashMap;
 pub use cards::*;
 pub use game::*;
 pub use player::*;
@@ -19,28 +19,54 @@ mod player;
 mod stats;
 mod tiles;
 
-pub fn add_cards_to_deck(
+pub fn spawn_level() {
+    // Load in the card info (maybe this should happen earlier, e.g. the app could invoke it)
+    // Spawn the player, cards, and tiles based on the level info
+    // Add the cards to the player's deck
+    // Add the properties to to the tile grid
+}
+
+pub fn despawn_level() {}
+
+pub fn shuffle_deck(
     mut deck: Query<&mut Deck, With<Player>>,
-    card_instances: Query<Entity, With<BaseCardInfo>>,
 ) {
-    let mut deck = deck.get_single_mut().expect("Should be exactly 1 deck");
-    for card_instance_id in card_instances.iter() {
-        info!("Adding card {:?} to deck", card_instance_id);
-        deck.add(card_instance_id);
+    deck.get_single_mut().expect("Should have 1 deck").shuffle();
+}
+
+#[derive(Resource)]
+pub struct DeckList(pub Vec<ContentID>);
+
+impl Default for DeckList {
+
+    fn default() -> Self {
+        Self(vec![
+            1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4]
+            .iter()
+            .map(|id| ContentID(*id))
+            .collect())
     }
-    deck.shuffle();
 }
 
 pub fn spawn_cards(
     mut commands: Commands,
-    card_infos: Query<Entity, With<CardInfo>>,
+    mut deck: Query<&mut Deck, With<Player>>,
+    deck_list: Res<DeckList>,
+    card_sprites: Res<CardSpriteSheet>,
+    card_infos: Query<(Entity, &ContentID), With<CardInfo>>,
 ) {
-    for card_info_id in card_infos.iter() {
-        (0..10).for_each(|_| {
-            commands.add(SpawnCard {
-                base_card_info: card_info_id,
-            });
-        });
+    let mut content_map = HashMap::new();
+    for (card_info_id, content_id) in card_infos.iter() {
+        content_map.insert(content_id, card_info_id);
+    }
+    let mut deck = deck.get_single_mut().expect("Should be exactly 1 deck");
+    for content_id in deck_list.0.iter() {
+        let card_instance_id = commands.spawn((
+            BaseCardInfo(content_map.get(content_id).expect("Failed to get card info id").clone()),
+            card_sprites.0.clone(),
+            InDeck,
+        )).id();
+        deck.add(card_instance_id);
     }
 }
 
@@ -154,28 +180,30 @@ impl Plugin for GamePlugin {
             .init_resource::<PlayerSpriteSheet>()
             .init_resource::<CardSpriteSheet>()
             .init_resource::<TileSpriteSheet>()
+            .init_resource::<DeckList>()
+
             .add_plugins(ui::GameUIPlugin)
             .add_state::<GameState>()
             .add_state::<TurnState>()
-            .add_systems(OnTransition { from: AppState::MainMenu, to: AppState::LevelMenu }, (
-                |mut game_state: ResMut<NextState<GameState>>| game_state.set(GameState::Loading),
-            ))
-            .add_systems(OnExit(AppState::Game), (
-                ui::despawn_game_ui,
-            ))
+
             .add_systems(OnTransition { from: GameState::None, to: GameState::Loading }, (
-                load_card_infos, 
-                schedule_transition::<NextGameState>
+                spawn_card_infos,
+                // spawn_object_infos,
             ))
-            .add_systems(OnTransition { from: AppState::LevelMenu, to: AppState::Game }, (
+            .add_systems(OnEnter(GameState::None), (
+                despawn_card_infos,
+                // despawn_object_infos,
+            ))
+
+            .add_systems(OnTransition { from: GameState::Loading, to: GameState::Loaded }, (
                 spawn_player, 
                 spawn_cards,
                 spawn_tiles,
                 schedule_transition::<NextGameState>
-            ).run_if(in_state(GameState::Loaded)))
+            ))
             .add_systems(OnTransition { from: GameState::Loaded, to: GameState::Playing }, (
-                add_cards_to_deck, 
-                add_random_fire_tiles,
+                shuffle_deck, 
+                spawn_fires,
                 schedule_transition::<NextTurnState>
             ))
             .add_systems(OnEnter(TurnState::Starting), (

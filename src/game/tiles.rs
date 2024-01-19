@@ -20,6 +20,19 @@ pub struct SpawnTiles {
     pub rows: i32,
 }
 
+pub enum FlameSpawner {
+    Chance(f32, i32, i32),
+    Static(Vec<(i32, i32)>),
+}
+
+#[derive(Resource)]
+pub struct MapParameters {
+    pub columns: i32,
+    pub rows: i32,
+    pub flame_spawner: FlameSpawner,
+
+}
+
 pub fn spawn_tiles(
     mut commands: Commands
 ) {
@@ -85,16 +98,30 @@ impl bevy::ecs::system::Command for SpawnTiles {
     }
 }
 
-pub fn add_random_fire_tiles( mut commands: Commands,
+pub fn spawn_fires( mut commands: Commands,
+    parameters: Res<MapParameters>,
     tiles: Query<(Entity, &Tile)>,
+    grid: Query<&Grid>,
 ) {
-    let mut rng = rand::thread_rng();
-    for (tile_id, tile) in tiles.iter() {
-        if tile == &Tile::Wall || rng.gen_bool(0.9) {
-            continue;
+    match &parameters.flame_spawner {
+        FlameSpawner::Chance(chance, min, max) => {
+            let mut rng = rand::thread_rng();
+            for (tile_id, tile) in tiles.iter() {
+                if tile == &Tile::Wall || rng.gen_bool(0.9) {
+                    continue;
+                }
+                commands.entity(tile_id)
+                    .insert(Tile::Fire(Intensity::Low));
+            }
+        },
+        FlameSpawner::Static(positions) => {
+            let grid = grid.single();
+            for position in positions.iter() {
+                let tile_id = grid.get(&GamePosition{x: position.0, y: position.1, ..default()});
+                commands.entity(tile_id)
+                    .insert(Tile::Fire(Intensity::Low));
+            }
         }
-        commands.entity(tile_id)
-            .insert(Tile::Fire(Intensity::Low));
     }
 }
 
