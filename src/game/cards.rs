@@ -212,6 +212,30 @@ impl Grid {
     pub fn get(&self, pos: &GamePosition) -> Entity {
         self.0[pos.x as usize][pos.y as usize]
     }
+
+    pub fn neighbors(&self, pos: &GamePosition) -> Vec<Entity> {
+        let mut entities = Vec::new();
+        for x in -1..=1 {
+            for y in -1..=1 {
+                if x == 0 && y == 0 {
+                    continue;
+                }
+                let neighbor = GamePosition {
+                    x: pos.x + x,
+                    y: pos.y + y,
+                    ..pos.clone()
+                };
+                if neighbor.x < 0 || neighbor.y < 0 {
+                    continue;
+                }
+                if neighbor.x as usize >= self.0.len() || neighbor.y as usize >= self.0[0].len() {
+                    continue;
+                }
+                entities.push(self.get(&neighbor));
+            }
+        }
+        entities
+    }
 }
 
 #[derive(Component, Debug)]

@@ -73,8 +73,47 @@ fn restore_energy(
     mut energy: Query<&mut Energy, With<Player>>,
 ) {
     let mut energy = energy.get_single_mut().expect("Should be exactly 1 energy");
-    info!("Restoring energy from {:?} to {:?}", energy.current, energy.maxium/2);
     energy.current = energy.maxium/2;
+}
+
+fn grow_flames(
+    mut commands: Commands,
+    mut tiles: Query<(Entity, &mut Tile)>,
+) {
+    for (tile_id, mut tile) in tiles.iter_mut() {
+        match *tile {
+            Tile::Fire(Level::Low) => {
+                *tile = Tile::Fire(Level::Medium);
+            },
+            Tile::Fire(Level::Medium) => {
+                *tile = Tile::Fire(Level::High);
+            },
+            _ => {}
+        }
+    }
+}
+
+fn propagate_flames(
+    mut commands: Commands,
+    tiles: Query<(Entity, &Tile)>,
+    positions: Query<&GamePosition>,
+    grid: Query<&Grid>,
+) {
+    let grid = grid.get_single().expect("Failed to get grid");
+    for (tile_id, tile) in tiles.iter() {
+        if let Tile::Fire(Level::High) = tile {
+            let position = positions.get(tile_id)
+                .expect("Failed to get position");
+            for neighbor in grid.neighbors(position) {
+                if let Ok((neighbor_id, neighbor_tile)) = tiles.get(neighbor) {
+                    if let Tile::Empty = *neighbor_tile {
+                        commands.entity(neighbor_id)
+                            .insert(Tile::Fire(Level::Low));
+                    }
+                }
+            }
+        }
+    }
 }
 
 
@@ -131,9 +170,11 @@ impl Plugin for GamePlugin {
                 transition::<GameState, NextGameState>,
                 transition::<TurnState, NextTurnState>
             ))
-            .add_systems(OnEnter(TurnState::Ended), 
+            .add_systems(OnEnter(TurnState::Ended), (
+                propagate_flames,
+                grow_flames,
                 schedule_transition::<NextTurnState>
-            )
+            ).chain())
             .add_systems(Update, (
                 apply_change::<GamePosition>, 
                 apply_change::<Energy>, 

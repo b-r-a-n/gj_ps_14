@@ -1,11 +1,17 @@
 use super::*;
 
+#[derive(PartialEq, Eq)]
+pub enum Level {
+    Low = 1,
+    Medium,
+    High,
+}
 
 #[derive(PartialEq, Eq, Component)]
 pub enum Tile {
     Empty,
     Wall,
-    Fire,
+    Fire(Level),
 }
 
 #[derive(Default)]
@@ -31,7 +37,7 @@ impl FromWorld for TileSpriteSheet {
         let texture_atlas = TextureAtlas::from_grid(
             texture_handle, 
             Vec2::new(64.0, 64.0), 
-            3, 
+            5, 
             1, 
             None, 
             None
@@ -88,7 +94,7 @@ pub fn add_random_fire_tiles( mut commands: Commands,
             continue;
         }
         commands.entity(tile_id)
-            .insert(Tile::Fire);
+            .insert(Tile::Fire(Level::Low));
     }
 }
 
@@ -98,11 +104,11 @@ pub fn update_tiles(
 ) {
     for (tile_id, tile, mut sprite_index) in tiles.iter_mut() {
         match tile {
-            Tile::Fire => {
-                sprite_index.index = 1;
+            Tile::Fire(level) => {
+                sprite_index.index = match level { Level::Low => 1, Level:: Medium => 2, Level::High => 3 };
             },
             Tile::Wall => {
-                sprite_index.index = 2;
+                sprite_index.index = 4;
                 commands.entity(tile_id).insert(BlockedTile);
             }
             _ => {
