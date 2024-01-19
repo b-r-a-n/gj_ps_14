@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use game::*;
-use ui::{UIPlugins, energy::*, hand::*};
+use ui::{MenuUIPlugin, LevelUIPlugin, energy::*, hand::*};
 use camera::*;
 
 mod camera;
@@ -27,6 +27,7 @@ fn handle_input(
     mut commands: Commands,
     turn_state: Res<State<TurnState>>,
     mut next_turn_state: ResMut<NextState<TurnState>>,
+    mut camera_transform: Query<&mut Transform, With<MainCamera>>,
     player_state: Query<(Entity, &GamePosition, &Energy, &Hand), With<Player>>,
     game_state: Res<State<GameState>>,
     playables: Query<&Playable>
@@ -41,20 +42,21 @@ fn handle_input(
             decks.get_mut(entity)
                 .expect("Failed to get the deck")
                 .add(commands.spawn(BaseCardInfo(card_info_id)).id());
-            */
-            if game_state.get() == &GameState::Menu {
+            if game_state.get() == &GameState::Loaded {
                 commands.spawn(NextGameState);
             } else if turn_state.get() == &TurnState::WaitingForInput {
                 next_turn_state.set(TurnState::Ended);
             }
+            */
         }
         Some(KeyCode::Space) => {
+            /*
             let entity = player_state.get_single().expect("Should be exactly 1 player").0;
             commands.spawn(CardActionType::Draw(Draw {
                 deck: entity,
                 hand: entity,
             }));
-
+            */
         }
 
         Some(x) if x < &KeyCode::Key6 => {
@@ -74,6 +76,19 @@ fn handle_input(
                 }));
             }
         }
+
+        Some(dir) if vec![KeyCode::Up, KeyCode::Right, KeyCode::Down, KeyCode::Left].contains(dir) => {
+            // Move the camera with the arrow keys
+            if dir == &KeyCode::Up {
+                camera_transform.single_mut().translation.y += 64.0;
+            } else if dir == &KeyCode::Down {
+                camera_transform.single_mut().translation.y -= 64.0;
+            } else if dir == &KeyCode::Left {
+                camera_transform.single_mut().translation.x -= 64.0;
+            } else if dir == &KeyCode::Right {
+                camera_transform.single_mut().translation.x += 64.0;
+            }
+        },
         /*
         Some(KeyCode::Up) => {
             commands.spawn((
@@ -139,15 +154,22 @@ fn print_state_change<T: States>(
     info!("{:?} changed to: {:?}", std::any::type_name::<T>(), state.get());
 }
 
+#[derive(States, Debug, Default, Clone, PartialEq, Eq, Hash)]
+enum AppState {
+    #[default]
+    MainMenu,
+    LevelMenu,
+    Game,
+}
 
 fn main() {
     App::new()
+        .add_state::<AppState>()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .add_plugins(CameraPlugin)
-        .add_plugins(UIPlugins)
+        .add_plugins(MenuUIPlugin)
+        .add_plugins(LevelUIPlugin)
         .add_plugins(GamePlugin)
-        .add_systems(Update, print_state_change::<TurnState>.run_if(state_changed::<TurnState>()))
-        .add_systems(Update, print_state_change::<GameState>.run_if(state_changed::<GameState>()))
         .add_systems(Update, handle_input)
         .add_systems(PostUpdate, update_position_transforms.before(bevy::transform::TransformSystem::TransformPropagate))
         .run();

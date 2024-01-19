@@ -3,9 +3,9 @@ use super::*;
 #[derive(States, Clone, Eq, PartialEq, Debug, Hash, Default)]
 pub enum GameState {
     #[default]
-    Menu,
+    None,
     Loading,
-    Paused,
+    Loaded,
     Playing,
 }
 
@@ -51,10 +51,10 @@ pub trait StateTransition {
 impl StateTransition for GameState {
     fn next(&self) -> Self {
         match self {
-            GameState::Menu => GameState::Loading,
-            GameState::Loading => GameState::Playing,
-            GameState::Paused => GameState::Playing,
-            GameState::Playing => GameState::Paused,
+            GameState::None => GameState::Loading,
+            GameState::Loading => GameState::Loaded,
+            GameState::Loaded => GameState::Playing,
+            GameState::Playing => GameState::Loaded,
         }
     }
 }

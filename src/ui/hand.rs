@@ -89,15 +89,15 @@ pub fn update_playable_indicator(
 }
 
 pub fn update_hand_ui(
-    hands: Query<&Hand, (With<Player>, Changed<Hand>)>,
+    hands: Query<(&Hand, &GamePosition), Or<(Changed<Hand>, Changed<GamePosition>)>>,
     card_sprites: Res<CardSpriteSheet>,
     card_info: Query<&CardInfo>,
     base_card_info: Query<&BaseCardInfo>,
-    mut card_uis: Query<(&CardUISlot, &mut BackgroundColor, &mut Handle<TextureAtlas>, &mut UiTextureAtlasImage)>,
+    mut card_uis: Query<(&CardUISlot, &mut BackgroundColor, &mut Transform, &mut Handle<TextureAtlas>, &mut UiTextureAtlasImage)>,
 ) {
     if hands.is_empty() { return; }
-    let hand = hands.get_single().expect("There should only be one player hand");
-    for (slot, mut background, mut atlas, mut image) in card_uis.iter_mut() {
+    let (hand, position) = hands.get_single().expect("There should only be one player hand");
+    for (slot, mut background, mut transform, mut atlas, mut image) in card_uis.iter_mut() {
         match hand.0[slot.0] {
             Some(card_instance_id) => {
                 let base_card_id = base_card_info.get(card_instance_id).expect("Card without base card info").0;
@@ -105,6 +105,12 @@ pub fn update_hand_ui(
                 background.0 = Color::WHITE.into();
                 *atlas = card_sprites.0.clone();
                 image.index = card_info.texture_index;
+                transform.rotation = match position.d {
+                    GameDirection::Up => Quat::from_rotation_z(0.0),
+                    GameDirection::Down => Quat::from_rotation_z(std::f32::consts::PI),
+                    GameDirection::Left => Quat::from_rotation_z(std::f32::consts::PI * 1.5),
+                    GameDirection::Right => Quat::from_rotation_z(std::f32::consts::PI * 0.5),
+                }
             },
             None => {
                 background.0 = Color::PINK.into();

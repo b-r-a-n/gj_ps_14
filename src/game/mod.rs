@@ -1,6 +1,7 @@
 use super::*;
 
 pub use actions::*;
+use bevy::transform::commands;
 pub use cards::*;
 pub use game::*;
 pub use player::*;
@@ -8,6 +9,7 @@ use rand::Rng;
 pub use stats::*;
 pub use card::*;
 pub use tiles::*;
+
 
 mod actions;
 mod cards;
@@ -116,6 +118,7 @@ fn propagate_flames(
 }
 
 fn check_for_level_end(
+    mut next_app_state: ResMut<NextState<AppState>>,
     mut next_turn_state: ResMut<NextState<TurnState>>,
     mut next_game_state: ResMut<NextState<GameState>>,
     tiles: Query<&Tile>
@@ -131,11 +134,13 @@ fn check_for_level_end(
     }
     if empty_count == 0 {
         info!("Level ended | Failure");
-        next_game_state.set(GameState::Menu);
+        next_app_state.set(AppState::MainMenu);
+        next_game_state.set(GameState::None);
         next_turn_state.set(TurnState::None);
     } else if fire_count == 0 {
         info!("Level ended | Success");
-        next_game_state.set(GameState::Menu);
+        next_app_state.set(AppState::LevelMenu);
+        next_game_state.set(GameState::Loaded);
         next_turn_state.set(TurnState::None);
     }
 }
@@ -149,18 +154,26 @@ impl Plugin for GamePlugin {
             .init_resource::<PlayerSpriteSheet>()
             .init_resource::<CardSpriteSheet>()
             .init_resource::<TileSpriteSheet>()
+            .add_plugins(ui::GameUIPlugin)
             .add_state::<GameState>()
             .add_state::<TurnState>()
-            .add_systems(Startup, (
-                load_card_infos, 
+            .add_systems(OnTransition { from: AppState::MainMenu, to: AppState::LevelMenu }, (
+                |mut game_state: ResMut<NextState<GameState>>| game_state.set(GameState::Loading),
             ))
-            .add_systems(OnTransition { from: GameState::Menu, to: GameState::Loading }, (
+            .add_systems(OnExit(AppState::Game), (
+                ui::despawn_game_ui,
+            ))
+            .add_systems(OnTransition { from: GameState::None, to: GameState::Loading }, (
+                load_card_infos, 
+                schedule_transition::<NextGameState>
+            ))
+            .add_systems(OnTransition { from: AppState::LevelMenu, to: AppState::Game }, (
                 spawn_player, 
                 spawn_cards,
                 spawn_tiles,
                 schedule_transition::<NextGameState>
-            ))
-            .add_systems(OnTransition { from: GameState::Loading, to: GameState::Playing }, (
+            ).run_if(in_state(GameState::Loaded)))
+            .add_systems(OnTransition { from: GameState::Loaded, to: GameState::Playing }, (
                 add_cards_to_deck, 
                 add_random_fire_tiles,
                 schedule_transition::<NextTurnState>

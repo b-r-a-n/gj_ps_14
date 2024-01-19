@@ -3,9 +3,12 @@ use super::*;
 #[derive(Default)]
 struct SpawnCamera;
 
+#[derive(Component)]
+pub struct MainCamera;
+
 impl bevy::ecs::system::Command for SpawnCamera {
     fn apply(self, world: &mut World) {
-        world.spawn(Camera2dBundle::default());
+        world.spawn((Camera2dBundle::default(), MainCamera));
     }
 }
 
