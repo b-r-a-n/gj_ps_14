@@ -77,16 +77,15 @@ fn restore_energy(
 }
 
 fn grow_flames(
-    mut commands: Commands,
-    mut tiles: Query<(Entity, &mut Tile)>,
+    mut tiles: Query<&mut Tile>,
 ) {
-    for (tile_id, mut tile) in tiles.iter_mut() {
+    for mut tile in tiles.iter_mut() {
         match *tile {
-            Tile::Fire(Level::Low) => {
-                *tile = Tile::Fire(Level::Medium);
+            Tile::Fire(Intensity::Low) => {
+                *tile = Tile::Fire(Intensity::Medium);
             },
-            Tile::Fire(Level::Medium) => {
-                *tile = Tile::Fire(Level::High);
+            Tile::Fire(Intensity::Medium) => {
+                *tile = Tile::Fire(Intensity::High);
             },
             _ => {}
         }
@@ -101,18 +100,43 @@ fn propagate_flames(
 ) {
     let grid = grid.get_single().expect("Failed to get grid");
     for (tile_id, tile) in tiles.iter() {
-        if let Tile::Fire(Level::High) = tile {
+        if let Tile::Fire(Intensity::High) = tile {
             let position = positions.get(tile_id)
                 .expect("Failed to get position");
             for neighbor in grid.neighbors(position) {
                 if let Ok((neighbor_id, neighbor_tile)) = tiles.get(neighbor) {
                     if let Tile::Empty = *neighbor_tile {
                         commands.entity(neighbor_id)
-                            .insert(Tile::Fire(Level::Low));
+                            .insert(Tile::Fire(Intensity::Low));
                     }
                 }
             }
         }
+    }
+}
+
+fn check_for_level_end(
+    mut next_turn_state: ResMut<NextState<TurnState>>,
+    mut next_game_state: ResMut<NextState<GameState>>,
+    tiles: Query<&Tile>
+) {
+    let mut fire_count = 0;
+    let mut empty_count = 0;
+    for tile in tiles.iter() {
+        match tile {
+            Tile::Fire(_) => fire_count += 1,
+            Tile::Empty => empty_count += 1,
+            _ => {}
+        }
+    }
+    if empty_count == 0 {
+        info!("Level ended | Failure");
+        next_game_state.set(GameState::Menu);
+        next_turn_state.set(TurnState::None);
+    } else if fire_count == 0 {
+        info!("Level ended | Success");
+        next_game_state.set(GameState::Menu);
+        next_turn_state.set(TurnState::None);
     }
 }
 
@@ -173,6 +197,7 @@ impl Plugin for GamePlugin {
             .add_systems(OnEnter(TurnState::Ended), (
                 propagate_flames,
                 grow_flames,
+                check_for_level_end,
                 schedule_transition::<NextTurnState>
             ).chain())
             .add_systems(Update, (

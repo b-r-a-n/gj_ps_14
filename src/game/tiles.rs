@@ -1,7 +1,7 @@
 use super::*;
 
 #[derive(PartialEq, Eq)]
-pub enum Level {
+pub enum Intensity {
     Low = 1,
     Medium,
     High,
@@ -11,7 +11,7 @@ pub enum Level {
 pub enum Tile {
     Empty,
     Wall,
-    Fire(Level),
+    Fire(Intensity),
 }
 
 #[derive(Default)]
@@ -23,7 +23,7 @@ pub struct SpawnTiles {
 pub fn spawn_tiles(
     mut commands: Commands
 ) {
-    commands.add(SpawnTiles { columns: 10, rows: 10, ..default() });
+    commands.add(SpawnTiles { columns: 3, rows: 3, ..default() });
 }
 
 #[derive(Resource)]
@@ -94,7 +94,7 @@ pub fn add_random_fire_tiles( mut commands: Commands,
             continue;
         }
         commands.entity(tile_id)
-            .insert(Tile::Fire(Level::Low));
+            .insert(Tile::Fire(Intensity::Low));
     }
 }
 
@@ -105,7 +105,7 @@ pub fn update_tiles(
     for (tile_id, tile, mut sprite_index) in tiles.iter_mut() {
         match tile {
             Tile::Fire(level) => {
-                sprite_index.index = match level { Level::Low => 1, Level:: Medium => 2, Level::High => 3 };
+                sprite_index.index = match level { Intensity::Low => 1, Intensity:: Medium => 2, Intensity::High => 3 };
             },
             Tile::Wall => {
                 sprite_index.index = 4;
