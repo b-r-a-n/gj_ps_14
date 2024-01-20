@@ -206,7 +206,6 @@ impl Plugin for GamePlugin {
             ))
             .add_systems(OnTransition { from: GameState::Loaded, to: GameState::Playing }, (
                 shuffle_deck, 
-                spawn_fires,
                 schedule_transition::<NextTurnState>
             ))
             .add_systems(OnEnter(TurnState::Starting), (

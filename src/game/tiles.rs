@@ -15,17 +15,21 @@ pub enum Tile {
 }
 
 #[derive(Default)]
-pub struct SpawnTiles {
-    pub columns: i32,
-    pub rows: i32,
-}
+pub struct SpawnTiles;
 
+#[derive(Clone)]
 pub enum FlameSpawner {
     Chance(f32, i32, i32),
     Static(Vec<(i32, i32)>),
 }
 
-#[derive(Resource)]
+impl Default for FlameSpawner {
+    fn default() -> Self {
+        Self::Static(vec![])
+    }
+}
+
+#[derive(Clone, Resource)]
 pub struct MapParameters {
     pub columns: i32,
     pub rows: i32,
@@ -34,9 +38,8 @@ pub struct MapParameters {
 
 pub fn spawn_tiles(
     mut commands: Commands,
-    map_parameters: Res<MapParameters>,
 ) {
-    commands.add(SpawnTiles { columns: map_parameters.columns, rows: map_parameters.rows });
+    commands.add(SpawnTiles);
 }
 
 pub fn despawn_tiles(
@@ -71,21 +74,37 @@ impl FromWorld for TileSpriteSheet {
     }
 }
 
+fn tile_is_wall(x: i32, y: i32, map: &MapParameters) -> bool {
+    x == 0 || y == 0 || x == map.columns+1 || y == map.rows+1
+}
+
+fn tile_is_flame(x: i32, y: i32, map: &MapParameters) -> bool {
+    match &map.flame_spawner {
+        FlameSpawner::Chance(chance, min_count, max_count) => {
+            let mut rng = rand::thread_rng();
+            rng.gen_bool((1.0-chance).into())
+        },
+        FlameSpawner::Static(positions) => {
+            positions.contains(&(x, y))
+        }
+    }
+}
+
 impl bevy::ecs::system::Command for SpawnTiles {
     fn apply(self, world: &mut World) {
         let sprite_sheet = world.get_resource::<TileSpriteSheet>()
             .expect("Failed get the `TileSpriteSheet` resource from the `World`");
+        let map: MapParameters = world.get_resource::<MapParameters>()
+            .expect("Failed get the `MapParameters` resource from the `World`").clone();
         let atlas = sprite_sheet.0.clone();
         let mut is_wall;
+        let mut is_flame;
         let mut entities: Vec<Vec<Entity>> = Vec::new();
-        for y in 0..=self.rows+1 {
+        for y in 0..=map.rows+1 {
             entities.push(Vec::new());
-            for x in 0..=self.columns+1 {
-                if x == 0 || y == 0 || x == self.columns+1 || y == self.rows+1 {
-                    is_wall = true;
-                } else {
-                    is_wall = false;
-                }
+            for x in 0..=map.columns+1 {
+                is_wall = tile_is_wall(x, y, &map);
+                is_flame = tile_is_flame(x, y, &map);
                 let mut ec = world.spawn((
                     GamePosition {
                         x,
@@ -93,57 +112,17 @@ impl bevy::ecs::system::Command for SpawnTiles {
                         ..default()
                     },
                     SpriteSheetBundle {
-                        sprite: TextureAtlasSprite::new(if is_wall { 2 } else { 0 }),
+                        sprite: TextureAtlasSprite::new(if is_wall { 4 } else { if is_flame { 1 } else { 0  }}),
                         texture_atlas: atlas.clone(),
                         ..default()
                     },
-                    if is_wall { Tile::Wall} else { Tile::Empty },
+                    if is_wall { Tile::Wall} else { if is_flame { Tile::Fire(Intensity::Low) } else { Tile::Empty } },
                 ));
                 if is_wall { ec.insert(BlockedTile); }
                 entities[y as usize].push(ec.id());
             }
         }
         world.spawn(Grid(entities));
-    }
-}
-
-pub fn spawn_fires( mut commands: Commands,
-    parameters: Res<MapParameters>,
-    tiles: Query<(Entity, &Tile)>,
-    grid: Query<&Grid>,
-) {
-    match &parameters.flame_spawner {
-        FlameSpawner::Chance(chance, min_count, max_count) => {
-            let mut rng = rand::thread_rng();
-            let mut tile_count = 0;
-            let mut potential_tiles = Vec::new();
-            for (tile_id, tile) in tiles.iter() {
-                let prob = 1.0 - chance;
-                if tile != &Tile::Wall {
-                    potential_tiles.push(tile_id);
-                }
-                if tile == &Tile::Wall || rng.gen_bool(prob.into()) || tile_count >= *max_count {
-                    continue;
-                }
-                tile_count += 1;
-                commands.entity(tile_id)
-                    .insert(Tile::Fire(Intensity::Low));
-            }
-            if tile_count < *min_count {
-                // Pick a random non-wall tile and set it on fire
-                let random_index = rng.gen_range(0..potential_tiles.len());
-                commands.entity(potential_tiles[random_index])
-                    .insert(Tile::Fire(Intensity::Low));
-            }
-        },
-        FlameSpawner::Static(positions) => {
-            let grid = grid.single();
-            for position in positions.iter() {
-                let tile_id = grid.get(&GamePosition{x: position.0, y: position.1, ..default()});
-                commands.entity(tile_id)
-                    .insert(Tile::Fire(Intensity::Low));
-            }
-        }
     }
 }
 
