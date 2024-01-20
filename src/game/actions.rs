@@ -106,18 +106,18 @@ pub struct WasPlayed(pub Entity);
 pub fn apply_card (
     mut commands: Commands,
     mut turn_state: ResMut<NextState<TurnState>>,
+    card_infos: Res<CardInfoMap>,
     player: Query<(Entity, &Energy, &Water), With<Player>>,
     played_cards: Query<(Entity, &WasPlayed)>,
-    card_instances: Query<&BaseCardInfo>,
-    card_infos: Query<&CardInfo>,
+    card_instances: Query<&ContentID>,
     game_positions: Query<&GamePosition>,
 ) {
     let (player_id, energy, water) = player.get_single().expect("There should only be one player");
     for (was_played_id, played_card) in played_cards.iter() {
         let card_instance_id = played_card.0;
         let card_info_id = card_instances.get(card_instance_id)
-            .expect("Failed to get card instance").0;
-        let card_info = card_infos.get(card_info_id)
+            .expect("Failed to get card instance");
+        let card_info = card_infos.0.get(&*card_info_id)
             .expect("Failed to get card info");
         commands.spawn(Change {
             entity: player_id,

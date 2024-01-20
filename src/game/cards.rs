@@ -36,7 +36,7 @@ impl Hand {
 pub fn sync_hand(
     mut commands: Commands,
     hands: Query<(Entity, &Hand), Changed<Hand>>,
-    cards: Query<Entity, With<BaseCardInfo>>,
+    cards: Query<Entity, With<ContentID>>,
 ) {
     if hands.is_empty() { return ; }
     let (_, hand) = hands.get_single().expect("Should be exactly 1 hand");
@@ -128,7 +128,7 @@ pub fn log_playability_changes(
 
 pub fn update_playable(
     mut commands: Commands,
-    card_instances: Query<(Entity, Option<&InHand>), With<BaseCardInfo>>,
+    card_instances: Query<(Entity, Option<&InHand>), With<ContentID>>,
     needs_something: Query<Entity, Or<(With<NeedsEnergy>, With<NeedsWater>, With<NeedsMoveable>)>>,
 ) {
     for (card_instance_id, in_hand) in card_instances.iter() {
@@ -192,9 +192,6 @@ pub struct HasEnergy(pub u32);
 #[derive(Component)]
 pub struct HasWater(pub u32);
 
-#[derive(Component)]
-pub struct BaseCardInfo(pub Entity);
-
 #[derive(Component, Debug)]
 pub struct Moveable;
 
@@ -246,14 +243,14 @@ pub struct NeedsMoveable(pub Vec<Entity>);
 pub fn update_movement_needs(
     commands: &mut Commands,
     card_instance_id: Entity,
-    base_card_infos: &Query<&BaseCardInfo>,
-    card_infos: &Query<&CardInfo>,
+    base_card_infos: &Query<&ContentID>,
+    card_infos: &Res<CardInfoMap>,
     player_pos: &GamePosition,
     tile_grid: &Grid,
     blocked_tiles: &Query<&BlockedTile>,
 ) {
     let base_card_info = base_card_infos.get(card_instance_id).expect("Missing base card info");
-    let card_info = card_infos.get(base_card_info.0).expect("Missing card info");
+    let card_info = card_infos.0.get(&*base_card_info).expect("Missing card info");
     match &card_info.position_change {
         MovementInfo { position: TileTarget::Offset(dist), rotation: rot} => {
             let target_pos = player_pos.rotated(rot).offset(*dist);
@@ -273,13 +270,13 @@ pub fn update_movement_needs(
 pub fn update_resource_needs(
     commands: &mut Commands,
     card_instance_id: Entity,
-    base_card_infos: &Query<&BaseCardInfo>,
-    card_infos: &Query<&CardInfo>,
+    base_card_infos: &Query<&ContentID>,
+    card_infos: &Res<CardInfoMap>,
     player_energy: &Energy,
     player_water: &Water,
 ) {
     let base_card_info = base_card_infos.get(card_instance_id).expect("Missing base card info");
-    let card_info = card_infos.get(base_card_info.0).expect("Missing card info");
+    let card_info = card_infos.0.get(&*base_card_info).expect("Missing card info");
     if card_info.resource_cost.energy > player_energy.current {
         commands.entity(card_instance_id)
             .insert(NeedsEnergy(card_info.resource_cost.energy - player_energy.current));
@@ -299,8 +296,8 @@ pub fn update_resource_needs(
 pub fn handle_resource_change(
     mut commands: Commands,
     card_instances_to_check: Query<Entity, With<InHand>>,
-    base_card_infos: Query<&BaseCardInfo>,
-    card_infos: Query<&CardInfo>,
+    base_card_infos: Query<&ContentID>,
+    card_infos: Res<CardInfoMap>,
     player_energy_changes: Query<Entity, (With<Player>, Changed<Energy>)>,
     player_water_changes: Query<Entity, (With<Player>, Changed<Water>)>,
     energies: Query<&Energy, With<Player>>,
@@ -323,8 +320,8 @@ pub fn handle_resource_change(
 pub fn handle_card_added_to_hand(
     mut commands: Commands,
     card_instances_to_check: Query<Entity, Added<InHand>>,
-    base_card_infos: Query<&BaseCardInfo>,
-    card_infos: Query<&CardInfo>,
+    base_card_infos: Query<&ContentID>,
+    card_infos: Res<CardInfoMap>,
     player_energy: Query<&Energy, With<Player>>,
     player_water: Query<&Water, With<Player>>,
     player_pos: Query<&GamePosition, With<Player>>,
@@ -355,8 +352,8 @@ pub fn handle_card_added_to_hand(
 pub fn handle_position_change(
     mut commands: Commands,
     card_instances_to_check: Query<Entity, With<InHand>>,
-    base_card_infos: Query<&BaseCardInfo>,
-    card_infos: Query<&CardInfo>,
+    base_card_infos: Query<&ContentID>,
+    card_infos: Res<CardInfoMap>,
     player_position_changes: Query<&GamePosition, (With<Player>, Changed<GamePosition>)>,
     tile_grid: Query<&Grid>,
     blocked_tiles: Query<&BlockedTile>,
@@ -382,79 +379,77 @@ pub enum TileTarget {
 }
 
 // ContentID is useful when trying to serialize/deserialize the game state
-#[derive(Component, Eq, PartialEq, Hash)]
+#[derive(Clone, Component, Eq, PartialEq, Hash)]
 pub struct ContentID(pub usize);
 
 pub fn despawn_card_infos(
     mut commands: Commands,
-    card_infos: Query<Entity, Or<(With<CardInfo>, With<BaseCardInfo>)>>,
+    card_infos: Query<Entity, With<ContentID>>,
 ) {
     for entity in card_infos.iter() {
         commands.entity(entity).despawn_recursive();
     }
 }
 
-pub fn spawn_card_infos(
-    mut commands: Commands,
+#[derive(Default, Resource)]
+pub struct CardInfoMap(pub HashMap<ContentID, CardInfo>);
+
+pub fn load_card_infos(
+    mut map: ResMut<CardInfoMap>,
 ) {
     // TODO: This info will eventually come from some sort of asset stored on disk
-    commands.spawn_batch(vec![
-        (
-            CardInfo {
-                resource_cost: ResourceInfo {
-                    energy: 1,
-                    water: 0,
-                },
-                position_change: MovementInfo {
-                    position: TileTarget::Offset(1),
-                    rotation: Rotation::None,
-                },
-                texture_index: 0,
+    let mut card_infos = HashMap::new();
+    card_infos.insert(ContentID(1),
+        CardInfo {
+            resource_cost: ResourceInfo {
+                energy: 1,
+                water: 0,
             },
-            ContentID(1),
-        ),
-        (
-            CardInfo {
-                resource_cost: ResourceInfo {
-                    energy: 1,
-                    water: 0,
-                },
-                position_change: MovementInfo {
-                    position: TileTarget::Offset(-1),
-                    rotation: Rotation::None,
-                },
-                texture_index: 1,
+            position_change: MovementInfo {
+                position: TileTarget::Offset(1),
+                rotation: Rotation::None,
             },
-            ContentID(2),
-        ),
-        (
-            CardInfo {
-                resource_cost: ResourceInfo {
-                    energy: 1,
-                    water: 0,
-                },
-                position_change: MovementInfo {
-                    position: TileTarget::Offset(0),
-                    rotation: Rotation::Right,
-                },
-                texture_index: 2,
+            texture_index: 0,
+        }
+    );
+    card_infos.insert(ContentID(2),
+        CardInfo {
+            resource_cost: ResourceInfo {
+                energy: 1,
+                water: 0,
             },
-            ContentID(3),
-        ),
-        (
-            CardInfo {
-                resource_cost: ResourceInfo {
-                    energy: 1,
-                    water: 0,
-                },
-                position_change: MovementInfo {
-                    position: TileTarget::Offset(0),
-                    rotation: Rotation::Left,
-                },
-                texture_index: 3,
+            position_change: MovementInfo {
+                position: TileTarget::Offset(-1),
+                rotation: Rotation::None,
             },
-            ContentID(4),
-        ),
-    ]);
-
+            texture_index: 1,
+        }
+    );
+    card_infos.insert(ContentID(3),
+        CardInfo {
+            resource_cost: ResourceInfo {
+                energy: 1,
+                water: 0,
+            },
+            position_change: MovementInfo {
+                position: TileTarget::Offset(0),
+                rotation: Rotation::Right,
+            },
+            texture_index: 2,
+        }
+    );
+    card_infos.insert(ContentID(4),
+        CardInfo {
+            resource_cost: ResourceInfo {
+                energy: 1,
+                water: 0,
+            },
+            position_change: MovementInfo {
+                position: TileTarget::Offset(0),
+                rotation: Rotation::Left,
+            },
+            texture_index: 3,
+        }
+    );
+    *map = CardInfoMap(card_infos);
 }

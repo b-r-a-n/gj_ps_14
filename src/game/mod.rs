@@ -53,16 +53,11 @@ pub fn spawn_cards(
     mut deck: Query<&mut Deck, With<Player>>,
     deck_list: Res<DeckList>,
     card_sprites: Res<CardSpriteSheet>,
-    card_infos: Query<(Entity, &ContentID), With<CardInfo>>,
 ) {
-    let mut content_map = HashMap::new();
-    for (card_info_id, content_id) in card_infos.iter() {
-        content_map.insert(content_id, card_info_id);
-    }
     let mut deck = deck.get_single_mut().expect("Should be exactly 1 deck");
     for content_id in deck_list.0.iter() {
         let card_instance_id = commands.spawn((
-            BaseCardInfo(content_map.get(content_id).expect("Failed to get card info id").clone()),
+            content_id.clone(),
             card_sprites.0.clone(),
             InDeck,
         )).id();
@@ -85,7 +80,7 @@ pub fn check_for_turn_ready(
 
 fn cleanup_temporary_state(
     mut commands: Commands,
-    card_instances: Query<Entity, With<BaseCardInfo>>,
+    card_instances: Query<Entity, With<ContentID>>,
 ) {
     for card_instance_id in card_instances.iter() {
         commands.entity(card_instance_id)
@@ -179,6 +174,7 @@ impl Plugin for GamePlugin {
             .init_resource::<PlayerSpriteSheet>()
             .init_resource::<CardSpriteSheet>()
             .init_resource::<TileSpriteSheet>()
+            .init_resource::<CardInfoMap>()
             .init_resource::<DeckList>()
 
             .insert_resource(MapParameters {
@@ -192,7 +188,7 @@ impl Plugin for GamePlugin {
             .add_state::<TurnState>()
 
             .add_systems(OnTransition { from: GameState::None, to: GameState::Loading }, (
-                spawn_card_infos,
+                load_card_infos,
                 spawn_player, 
                 // spawn_object_infos,
                 schedule_transition::<NextGameState>

@@ -91,8 +91,8 @@ pub fn update_playable_indicator(
 pub fn update_hand_ui(
     hands: Query<(&Hand, &GamePosition), Or<(Changed<Hand>, Changed<GamePosition>)>>,
     card_sprites: Res<CardSpriteSheet>,
-    card_info: Query<&CardInfo>,
-    base_card_info: Query<&BaseCardInfo>,
+    card_info: Res<CardInfoMap>,
+    base_card_info: Query<&ContentID>,
     mut card_uis: Query<(&CardUISlot, &mut BackgroundColor, &mut Transform, &mut Handle<TextureAtlas>, &mut UiTextureAtlasImage)>,
 ) {
     if hands.is_empty() { return; }
@@ -100,8 +100,8 @@ pub fn update_hand_ui(
     for (slot, mut background, mut transform, mut atlas, mut image) in card_uis.iter_mut() {
         match hand.0[slot.0] {
             Some(card_instance_id) => {
-                let base_card_id = base_card_info.get(card_instance_id).expect("Card without base card info").0;
-                let card_info = card_info.get(base_card_id).expect("Card without info");
+                let base_card_id = base_card_info.get(card_instance_id).expect("Card without base card info");
+                let card_info = card_info.0.get(&*base_card_id).expect("Card without info");
                 background.0 = Color::WHITE.into();
                 *atlas = card_sprites.0.clone();
                 image.index = card_info.texture_index;

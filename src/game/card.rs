@@ -1,7 +1,7 @@
 use super::*;
 
 pub struct SpawnCard {
-    pub base_card_info: Entity,
+    pub content_id: ContentID,
 }
 
 #[derive(Resource)]
@@ -30,7 +30,7 @@ impl FromWorld for CardSpriteSheet {
 impl bevy::ecs::system::Command for SpawnCard {
     fn apply(self, world: &mut World) {
         world.spawn((
-            BaseCardInfo(self.base_card_info),
+            self.content_id.clone(),
         ));
     }
 }
