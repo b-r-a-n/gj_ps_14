@@ -19,7 +19,7 @@ pub fn despawn_player(
 }
 
 #[derive(Resource)]
-pub struct PlayerSpriteSheet(Handle<TextureAtlas>);
+pub struct PlayerSpriteSheet(pub Handle<TextureAtlas>);
 
 impl FromWorld for PlayerSpriteSheet {
     fn from_world(world: &mut World) -> Self {

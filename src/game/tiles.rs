@@ -30,13 +30,22 @@ pub struct MapParameters {
     pub columns: i32,
     pub rows: i32,
     pub flame_spawner: FlameSpawner,
-
 }
 
 pub fn spawn_tiles(
-    mut commands: Commands
+    mut commands: Commands,
+    map_parameters: Res<MapParameters>,
 ) {
-    commands.add(SpawnTiles { columns: 3, rows: 3, ..default() });
+    commands.add(SpawnTiles { columns: map_parameters.columns, rows: map_parameters.rows });
+}
+
+pub fn despawn_tiles(
+    mut commands: Commands,
+    query: Query<Entity, Or<(With<Tile>, With<Grid>)>>,
+) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn_recursive();
+    }
 }
 
 #[derive(Resource)]
@@ -104,13 +113,26 @@ pub fn spawn_fires( mut commands: Commands,
     grid: Query<&Grid>,
 ) {
     match &parameters.flame_spawner {
-        FlameSpawner::Chance(chance, min, max) => {
+        FlameSpawner::Chance(chance, min_count, max_count) => {
             let mut rng = rand::thread_rng();
+            let mut tile_count = 0;
+            let mut potential_tiles = Vec::new();
             for (tile_id, tile) in tiles.iter() {
-                if tile == &Tile::Wall || rng.gen_bool(0.9) {
+                let prob = 1.0 - chance;
+                if tile != &Tile::Wall {
+                    potential_tiles.push(tile_id);
+                }
+                if tile == &Tile::Wall || rng.gen_bool(prob.into()) || tile_count >= *max_count {
                     continue;
                 }
+                tile_count += 1;
                 commands.entity(tile_id)
+                    .insert(Tile::Fire(Intensity::Low));
+            }
+            if tile_count < *min_count {
+                // Pick a random non-wall tile and set it on fire
+                let random_index = rng.gen_range(0..potential_tiles.len());
+                commands.entity(potential_tiles[random_index])
                     .insert(Tile::Fire(Intensity::Low));
             }
         },

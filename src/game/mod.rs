@@ -171,7 +171,6 @@ fn check_for_level_end(
     }
 }
 
-
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
@@ -182,21 +181,29 @@ impl Plugin for GamePlugin {
             .init_resource::<TileSpriteSheet>()
             .init_resource::<DeckList>()
 
+            .insert_resource(MapParameters {
+                columns: 3,
+                rows: 1,
+                flame_spawner: FlameSpawner::Static(vec![(3, 1)]),
+            })
+
             .add_plugins(ui::GameUIPlugin)
             .add_state::<GameState>()
             .add_state::<TurnState>()
 
             .add_systems(OnTransition { from: GameState::None, to: GameState::Loading }, (
                 spawn_card_infos,
+                spawn_player, 
                 // spawn_object_infos,
+                schedule_transition::<NextGameState>
             ))
             .add_systems(OnEnter(GameState::None), (
                 despawn_card_infos,
+                despawn_player,
+                despawn_tiles,
                 // despawn_object_infos,
             ))
-
             .add_systems(OnTransition { from: GameState::Loading, to: GameState::Loaded }, (
-                spawn_player, 
                 spawn_cards,
                 spawn_tiles,
                 schedule_transition::<NextGameState>

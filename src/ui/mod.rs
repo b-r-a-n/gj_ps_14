@@ -25,12 +25,28 @@ pub fn despawn_game_ui(
     }
 }
 
+pub fn spawn_game_ui(
+    mut commands: Commands,
+    player_sprite_sheet: Res<PlayerSpriteSheet>,
+    players: Query<Entity, With<Player>>,
+) {
+    commands.add(SpawnEnergyUI::default());
+    commands.add(SpawnHandUI::default());
+    for player_id in players.iter() {
+        commands.entity(player_id)
+            .insert(SpriteSheetBundle {
+                sprite: TextureAtlasSprite::new(0),
+                texture_atlas: player_sprite_sheet.0.clone(),
+                ..Default::default()
+            });
+    }
+}
+
 impl Plugin for GameUIPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_systems(OnEnter(GameState::Playing), |mut commands: Commands| commands.add(SpawnEnergyUI::default()))
-            .add_systems(OnEnter(GameState::Playing), |mut commands: Commands| commands.add(SpawnHandUI::default()))
-            .add_systems(Update, (update_energy_ui, update_hand_ui, update_playable_indicator).run_if(in_state(GameState::Playing)))
+            .add_systems(Update, (update_energy_ui, update_hand_ui, update_playable_indicator)
+                .run_if(in_state(GameState::Playing)))
         ;
     }
 }

@@ -37,28 +37,9 @@ fn handle_input(
     }
     match keyboard_input.get_just_released().last() {
         Some(KeyCode::Return) => {
-            /*
-            let card_info_id = card_infos.get_single().expect("Should be exactly 1 card info").0;
-            decks.get_mut(entity)
-                .expect("Failed to get the deck")
-                .add(commands.spawn(BaseCardInfo(card_info_id)).id());
-            if game_state.get() == &GameState::Loaded {
-                commands.spawn(NextGameState);
-            } else if turn_state.get() == &TurnState::WaitingForInput {
-                next_turn_state.set(TurnState::Ended);
-            }
-            */
         }
         Some(KeyCode::Space) => {
-            /*
-            let entity = player_state.get_single().expect("Should be exactly 1 player").0;
-            commands.spawn(CardActionType::Draw(Draw {
-                deck: entity,
-                hand: entity,
-            }));
-            */
         }
-
         Some(x) if x < &KeyCode::Key6 => {
             if turn_state.get() != &TurnState::WaitingForInput {
                 return;
@@ -170,10 +151,15 @@ fn main() {
         .add_systems(OnEnter(AppState::LevelMenu), level_menu::spawn)
         .add_systems(OnExit(AppState::LevelMenu), level_menu::despawn)
 
-        .add_systems(OnEnter(AppState::Game), spawn_level)
-        .add_systems(OnExit(AppState::Game), despawn_level)
+        .add_systems(OnEnter(AppState::Game), spawn_game_ui)
+        .add_systems(OnExit(AppState::Game), despawn_game_ui)
 
-        .add_systems(Update, handle_input)
+        .add_systems(Update, (
+            handle_input, 
+            print_state_change::<AppState>.run_if(state_changed::<AppState>()),
+            print_state_change::<GameState>.run_if(state_changed::<GameState>()),
+            print_state_change::<TurnState>.run_if(state_changed::<TurnState>()),
+        ))
         .add_systems(PostUpdate, update_position_transforms.before(bevy::transform::TransformSystem::TransformPropagate))
         .run();
 }

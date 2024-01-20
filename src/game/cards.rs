@@ -36,20 +36,16 @@ impl Hand {
 pub fn sync_hand(
     mut commands: Commands,
     hands: Query<(Entity, &Hand), Changed<Hand>>,
-    mut previous_hand: Local<Hand>,
+    cards: Query<Entity, With<BaseCardInfo>>,
 ) {
-    for (_, hand) in hands.iter() {
-        for card in previous_hand.0.iter() {
-            if let Some(card) = card {
-                commands.entity(*card).remove::<InHand>();
-            }
+    if hands.is_empty() { return ; }
+    let (_, hand) = hands.get_single().expect("Should be exactly 1 hand");
+    for card_instance_id in cards.iter() {
+        if hand.0.contains(&Some(card_instance_id)) {
+            commands.entity(card_instance_id).insert(InHand);
+        } else {
+            commands.entity(card_instance_id).remove::<InHand>();
         }
-        for card in hand.0.iter() {
-            if let Some(card) = card {
-                commands.entity(*card).insert(InHand);
-            }
-        }
-        previous_hand.0 = hand.0;
     }
 }
 
@@ -210,7 +206,7 @@ pub struct Grid(pub Vec<Vec<Entity>>);
 
 impl Grid {
     pub fn get(&self, pos: &GamePosition) -> Entity {
-        self.0[pos.x as usize][pos.y as usize]
+        self.0[pos.y as usize][pos.x as usize]
     }
 
     pub fn neighbors(&self, pos: &GamePosition) -> Vec<Entity> {
@@ -391,7 +387,7 @@ pub struct ContentID(pub usize);
 
 pub fn despawn_card_infos(
     mut commands: Commands,
-    card_infos: Query<Entity, With<CardInfo>>,
+    card_infos: Query<Entity, Or<(With<CardInfo>, With<BaseCardInfo>)>>,
 ) {
     for entity in card_infos.iter() {
         commands.entity(entity).despawn_recursive();
