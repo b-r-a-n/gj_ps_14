@@ -282,5 +282,57 @@ pub fn load_card_infos(
             texture_index: 3,
         }
     );
+    card_infos.insert(ContentID(5),
+        CardInfo {
+            resource_cost: ResourceInfo {
+                energy: 0,
+                water: 1,
+            },
+            position_change: MovementInfo {
+                position: TileTarget::Offset(0),
+                rotation: Rotation::None,
+            },
+            texture_index: 4,
+        }
+    );
+    card_infos.insert(ContentID(6),
+        CardInfo {
+            resource_cost: ResourceInfo {
+                energy: 0,
+                water: 1,
+            },
+            position_change: MovementInfo {
+                position: TileTarget::Offset(0),
+                rotation: Rotation::None,
+            },
+            texture_index: 5,
+        }
+    );
+    card_infos.insert(ContentID(7),
+        CardInfo {
+            resource_cost: ResourceInfo {
+                energy: 0,
+                water: 2,
+            },
+            position_change: MovementInfo {
+                position: TileTarget::Offset(0),
+                rotation: Rotation::None,
+            },
+            texture_index: 6,
+        }
+    );
+    card_infos.insert(ContentID(8),
+        CardInfo {
+            resource_cost: ResourceInfo {
+                energy: 0,
+                water: 3,
+            },
+            position_change: MovementInfo {
+                position: TileTarget::Offset(0),
+                rotation: Rotation::None,
+            },
+            texture_index: 7,
+        }
+    );
     *map = CardInfoMap(card_infos);
 }

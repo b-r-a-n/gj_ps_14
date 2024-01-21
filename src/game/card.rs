@@ -16,7 +16,7 @@ impl FromWorld for CardSpriteSheet {
             texture_handle, 
             Vec2::new(160.0, 160.0), 
             4, 
-            1, 
+            2, 
             None, 
             None
         );
