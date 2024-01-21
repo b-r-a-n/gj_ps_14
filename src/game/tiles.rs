@@ -29,7 +29,7 @@ impl Default for FlameSpawner {
     }
 }
 
-#[derive(Clone, Resource)]
+#[derive(Clone, Default, Resource)]
 pub struct MapParameters {
     pub columns: i32,
     pub rows: i32,

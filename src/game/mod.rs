@@ -19,15 +19,6 @@ mod player;
 mod stats;
 mod tiles;
 
-pub fn spawn_level() {
-    // Load in the card info (maybe this should happen earlier, e.g. the app could invoke it)
-    // Spawn the player, cards, and tiles based on the level info
-    // Add the cards to the player's deck
-    // Add the properties to to the tile grid
-}
-
-pub fn despawn_level() {}
-
 pub fn shuffle_deck(
     mut deck: Query<&mut Deck, With<Player>>,
 ) {
@@ -60,12 +51,63 @@ pub fn spawn_cards(
             content_id.clone(),
             card_sprites.0.clone(),
             InDeck,
+            CardStatus::Unknown,
         )).id();
         deck.add(card_instance_id);
     }
 }
 
-pub fn check_for_turn_ready(
+pub fn despawn_cards(
+    mut commands: Commands,
+    cards: Query<Entity, With<ContentID>>,
+) {
+    for card_id in cards.iter() {
+        commands.entity(card_id).despawn_recursive();
+    }
+}
+
+const SPAWN_POINTS : [[Option<(i32, i32)>; 5]; 5] = [
+    [Some((3, 1)), None, None, None, None],
+    [Some((2, 2)), None, None, None, None],
+    [Some((3, 1)), Some((3, 2)), None, None, None],
+    [Some((2, 2)), Some((3, 2)), None, None, None],
+    [Some((2, 2)), Some((3, 2)), Some((3, 1)), None, None],
+];
+const MAP_SIZES : [(i32, i32); 5] = [
+    (3, 1),
+    (3, 3),
+    (4, 4),
+    (5, 5),
+    (6, 6),
+];
+pub fn prepare_for_new_level(
+    mut map: ResMut<MapParameters>,
+    mut deck: Query<&mut Deck, With<Player>>,
+    mut hand: Query<&mut Hand, With<Player>>,
+    mut position: Query<&mut GamePosition, With<Player>>,
+    mut level_index: Local<usize>,
+) {
+    // Update the MapParameters resource
+    *map = MapParameters {
+        columns: MAP_SIZES[*level_index].0,
+        rows: MAP_SIZES[*level_index].1,
+        flame_spawner: FlameSpawner::Static(SPAWN_POINTS[*level_index].iter().cloned().flatten().collect()),
+    };
+    *level_index += 1;
+    *level_index %= SPAWN_POINTS.len();
+
+    // Reset the transitory player state
+    let mut position = position.get_single_mut().expect("Should be exactly 1 player");
+    position.x = 1;
+    position.y = 1;
+    position.d = GameDirection::Up;
+
+    // Reset the transitory card state
+    deck.get_single_mut().expect("Should be exactly 1 deck").reset();
+    hand.get_single_mut().expect("Should be exactly 1 deck").reset();
+}
+
+pub fn start_turn(
     pending_actions: Query<(Entity, &CardActionType)>,
     mut pending_action_count: Local<usize>,
     mut next_turn_state: ResMut<NextState<TurnState>>,
@@ -75,20 +117,6 @@ pub fn check_for_turn_ready(
     }
     if pending_actions.iter().len() == 0 {
         next_turn_state.set(TurnState::Started);
-    }
-}
-
-fn cleanup_temporary_state(
-    mut commands: Commands,
-    card_instances: Query<Entity, With<ContentID>>,
-) {
-    for card_instance_id in card_instances.iter() {
-        commands.entity(card_instance_id)
-            .remove::<Playable>()
-            .remove::<NeedsEnergy>()
-            .remove::<NeedsMoveable>()
-            .remove::<NeedsWater>()
-            .remove::<WasPlayed>();
     }
 }
 
@@ -142,8 +170,12 @@ fn check_for_level_end(
     mut next_app_state: ResMut<NextState<AppState>>,
     mut next_turn_state: ResMut<NextState<TurnState>>,
     mut next_game_state: ResMut<NextState<GameState>>,
-    tiles: Query<&Tile>
+    tiles: Query<&Tile>,
+    changes: Query<Entity, Changed<Tile>>,
 ) {
+    if changes.is_empty() {
+        return;
+    }
     let mut fire_count = 0;
     let mut empty_count = 0;
     for tile in tiles.iter() {
@@ -153,6 +185,7 @@ fn check_for_level_end(
             _ => {}
         }
     }
+    info!("Fire count: {} | Empty count: {}", fire_count, empty_count);
     if empty_count == 0 {
         info!("Level ended | Failure");
         next_app_state.set(AppState::MainMenu);
@@ -163,6 +196,73 @@ fn check_for_level_end(
         next_app_state.set(AppState::LevelMenu);
         next_game_state.set(GameState::Loaded);
         next_turn_state.set(TurnState::None);
+    } 
+}
+
+fn put_flames_out(
+    mut tiles: Query<&mut Tile>,
+    pos: Query<&GamePosition, (With<Player>, Changed<GamePosition>)>,
+    grid: Query<&Grid>,
+) {
+    if pos.is_empty() {
+        return;
+    }
+    let pos = pos.get_single().expect("Should only be one player position");
+    let grid = grid.get_single().expect("Failed to get grid");
+    let tile_id = grid.get(pos);
+    let mut tile = tiles.get_mut(tile_id).expect("Failed to get tile");
+    *tile = Tile::Empty;
+}
+
+
+#[derive(Component)]
+pub enum CardStatus {
+    Playable,
+    Unplayable,
+    Unknown,
+}
+
+impl CardStatus {
+    pub fn is_playable(&self) -> bool {
+        match self {
+            CardStatus::Playable => true,
+            _ => false,
+        }
+    }
+}
+
+fn update_playability(
+    player_info: Query<(&GamePosition, &Energy, &Water, &Hand), With<Player>>,
+    mut card_instances: Query<(&ContentID, &mut CardStatus)>,
+    card_info: Res<CardInfoMap>,
+    tile_grid: Query<&Grid>,
+    blocked_tiles: Query<&BlockedTile>,
+
+) {
+    let (position, energy, water, hand) = player_info.get_single()
+        .expect("Should be exactly 1 player");
+    let tile_grid = tile_grid.get_single().expect("Failed to get tile grid");
+    for card_instance_id in hand.0.iter().flatten() {
+        let (content_id, mut status) = card_instances.get_mut(*card_instance_id)
+            .expect("Failed to get card instance");
+        let card_info = card_info.0.get(&*content_id)
+            .expect("Failed to get card info");
+        if card_info.resource_cost.energy > energy.current || card_info.resource_cost.water > water.current {
+            *status = CardStatus::Unplayable;
+            continue;
+        }
+        match &card_info.position_change {
+            MovementInfo { position: TileTarget::Offset(dist), rotation: rot} => {
+                let target_pos = position.rotated(rot).offset(*dist);
+                let tile_id = tile_grid.get(&target_pos);
+                if blocked_tiles.get(tile_id).is_ok() {
+                    *status = CardStatus::Unplayable;
+                    continue;
+                } 
+            }
+            _ => {}
+        }
+        *status = CardStatus::Playable;
     }
 }
 
@@ -176,12 +276,7 @@ impl Plugin for GamePlugin {
             .init_resource::<TileSpriteSheet>()
             .init_resource::<CardInfoMap>()
             .init_resource::<DeckList>()
-
-            .insert_resource(MapParameters {
-                columns: 3,
-                rows: 1,
-                flame_spawner: FlameSpawner::Static(vec![(3, 1)]),
-            })
+            .init_resource::<MapParameters>()
 
             .add_plugins(ui::GameUIPlugin)
             .add_state::<GameState>()
@@ -190,49 +285,48 @@ impl Plugin for GamePlugin {
             .add_systems(OnTransition { from: GameState::None, to: GameState::Loading }, (
                 load_card_infos,
                 spawn_player, 
-                // spawn_object_infos,
                 schedule_transition::<NextGameState>
             ))
             .add_systems(OnEnter(GameState::None), (
                 despawn_card_infos,
                 despawn_player,
-                despawn_tiles,
-                // despawn_object_infos,
             ))
-            .add_systems(OnTransition { from: GameState::Loading, to: GameState::Loaded }, (
+            .add_systems(OnExit(GameState::Playing), (
+                despawn_tiles,
+                despawn_cards,
+            ))
+            .add_systems(OnEnter(GameState::Loaded), (
+                prepare_for_new_level,
                 spawn_cards,
                 spawn_tiles,
-                schedule_transition::<NextGameState>
-            ))
+            ).chain())
+            .add_systems(Update,
+                (|mut next_state: ResMut<NextState<GameState>>| { next_state.set(GameState::Playing); })
+                    .run_if(in_state(AppState::Game))
+                    .run_if(in_state(GameState::Loaded))
+            )
             .add_systems(OnTransition { from: GameState::Loaded, to: GameState::Playing }, (
                 shuffle_deck, 
                 schedule_transition::<NextTurnState>
             ))
             .add_systems(OnEnter(TurnState::Starting), (
                 fill_hand_with_cards, 
+                restore_energy,
                 )
-                .chain()
                 .run_if(in_state(GameState::Playing)
             ))
             .add_systems(Update, (
-                check_for_turn_ready,
+                start_turn,
                 )
                 .run_if(in_state(GameState::Playing))
                 .run_if(in_state(TurnState::Starting)))
             .add_systems(OnEnter(TurnState::Started), (
-                restore_energy,
-                schedule_transition::<NextTurnState>
-                ).run_if(in_state(GameState::Playing)))
+                update_playability,
+                check_for_turn_over,
+                ).chain().run_if(in_state(GameState::Playing)))
             .add_systems(OnEnter(TurnState::Animating), (
                 animate_cards,
-                cleanup_temporary_state,
             ))
-            .add_systems(Update, (
-                check_for_turn_over
-                )
-                .run_if(in_state(TurnState::WaitingForInput))
-                .run_if(in_state(GameState::Playing))
-            )
             .add_systems(Update, (
                 transition::<GameState, NextGameState>,
                 transition::<TurnState, NextTurnState>
@@ -240,8 +334,7 @@ impl Plugin for GamePlugin {
             .add_systems(OnEnter(TurnState::Ended), (
                 propagate_flames,
                 grow_flames,
-                check_for_level_end,
-                schedule_transition::<NextTurnState>
+                |mut next_state: ResMut<NextState<TurnState>>| next_state.set(TurnState::Starting),
             ).chain())
             .add_systems(Update, (
                 apply_change::<GamePosition>, 
@@ -249,14 +342,11 @@ impl Plugin for GamePlugin {
                 apply_change::<Water>, 
                 apply_card,
                 apply_card_actions, 
+                check_for_level_end,
                 sync_deck, 
                 sync_hand, 
-                update_playable, 
-                handle_card_added_to_hand,
-                handle_resource_change,
-                handle_position_change,
-                log_playability_changes,
                 update_tiles,
+                put_flames_out,
                 ).run_if(in_state(GameState::Playing)))
             ;
     }

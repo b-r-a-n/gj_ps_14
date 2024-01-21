@@ -66,7 +66,7 @@ impl bevy::ecs::system::Command for SpawnHandUI {
 }
 
 pub fn update_playable_indicator(
-    playables: Query<Entity, With<Playable>>,
+    statuses: Query<&CardStatus>,
     hand: Query<&Hand>,
     mut card_uis: Query<(&Parent, &CardUISlot)>,
     mut borders: Query<&mut BorderColor>
@@ -77,7 +77,8 @@ pub fn update_playable_indicator(
 
     for (parent, slot) in card_uis.iter_mut() {
         if let Some(card_instance_id) = hand.0[slot.0] {
-            if playables.get(card_instance_id).is_ok() {
+            let status = statuses.get(card_instance_id).expect("Card without status");
+            if status.is_playable() {
                 borders.get_mut(parent.get()).unwrap().0 = Color::GREEN.into();
             } else {
                 borders.get_mut(parent.get()).unwrap().0 = Color::RED.into();

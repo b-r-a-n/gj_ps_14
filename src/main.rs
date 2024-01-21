@@ -29,14 +29,17 @@ fn handle_input(
     mut next_turn_state: ResMut<NextState<TurnState>>,
     mut camera_transform: Query<&mut Transform, With<MainCamera>>,
     player_state: Query<(Entity, &GamePosition, &Energy, &Hand), With<Player>>,
-    game_state: Res<State<GameState>>,
-    playables: Query<&Playable>
+    statuses: Query<&CardStatus>,
 ) {
     if keyboard_input.get_just_released().last().is_none() {
         return;
     }
     match keyboard_input.get_just_released().last() {
         Some(KeyCode::Return) => {
+            if turn_state.get() != &TurnState::WaitingForInput {
+                return;
+            }
+            next_turn_state.set(TurnState::Ended);
         }
         Some(KeyCode::Space) => {
         }
@@ -47,7 +50,7 @@ fn handle_input(
             let (entity, _, _, hand) = player_state.get_single().expect("Should be exactly 1 player");
             let index = x.clone() as usize - KeyCode::Key1 as usize;
             if let Some(card) = hand.0[index] {
-                if playables.get(card).is_err() {
+                if !statuses.get(card).expect("Card in hand should have status").is_playable() {
                     return;
                 }
                 commands.spawn(CardActionType::Play(Play {

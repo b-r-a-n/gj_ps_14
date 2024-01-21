@@ -27,20 +27,15 @@ pub enum TurnState {
 pub struct NextTurnState;
 
 pub fn check_for_turn_over(
-    mut commands: Commands,
+    current_turn_state: Res<State<TurnState>>,
     mut next_turn_state: ResMut<NextState<TurnState>>,
-    playable_cards: Query<Entity, (With<InHand>, With<Playable>)>,
-    mut last_playable_count: Local<usize>,
+    playable_cards: Query<&CardStatus, With<InHand>>,
 ) {
-    if playable_cards.is_empty() {
+    if playable_cards.iter().filter(|card| card.is_playable()).count() < 1 {
         info!("Turn is over");
         next_turn_state.set(TurnState::Ended);
     } else {
-        let current_playable_count = playable_cards.iter().len();
-        if current_playable_count != *last_playable_count {
-            info!("{} playable cards remain", current_playable_count);
-            *last_playable_count = current_playable_count;
-        }
+        next_turn_state.set(current_turn_state.next())
     }
 }
 

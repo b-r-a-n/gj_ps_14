@@ -151,7 +151,7 @@ pub fn apply_card (
 }
 
 pub fn animate_cards(
-    mut commands: Commands,
+    mut next_turn_state: ResMut<NextState<TurnState>>,
 ) {
-    commands.spawn(NextTurnState);
+    next_turn_state.set(TurnState::Started);
 }
