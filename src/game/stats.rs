@@ -29,16 +29,13 @@ pub struct GamePosition {
 }
 
 impl GamePosition {
-    pub fn offset(&self, by: i32) -> Self {
-        let mut pos = match self.d {
-            GameDirection::Up => Self { y: self.y + by, ..self.clone() },
-            GameDirection::Down => Self { y: self.y - by, ..self.clone() },
-            GameDirection::Left => Self { x: self.x - by, ..self.clone() },
-            GameDirection::Right => Self { x: self.x + by, ..self.clone() },
-        };
-        if pos.y < 0 { pos.y = 0; }
-        if pos.x < 0 { pos.x = 0; }
-        pos
+    pub fn offset(&self, by: (i32, i32)) -> Self {
+        match self.d {
+            GameDirection::Up => Self { y: self.y + by.0, x: self.x + by.1, ..self.clone() },
+            GameDirection::Down => Self { y: self.y - by.0, x: self.x - by.1, ..self.clone() },
+            GameDirection::Left => Self { x: self.x - by.0, y: self.y + by.1, ..self.clone() },
+            GameDirection::Right => Self { x: self.x + by.0, y: self.y - by.1, ..self.clone() },
+        }
     }
     pub fn adjacent(&self, radius: i32) -> Vec<Self> {
         let mut positions = vec![];
@@ -55,15 +52,15 @@ impl GamePosition {
     }
     pub fn rotated(&self, rotation: &Rotation) -> Self {
         match (&self.d, rotation) {
-                (GameDirection::Up, Rotation::Right) => Self { d: GameDirection::Right, ..self.clone() },
-                (GameDirection::Down, Rotation::Right) => Self { d: GameDirection::Left, ..self.clone() },
-                (GameDirection::Left, Rotation::Right) => Self { d: GameDirection::Up, ..self.clone() },
-                (GameDirection::Right, Rotation::Right) => Self { d: GameDirection::Down, ..self.clone() },
-                (GameDirection::Up, Rotation::Left) => Self { d: GameDirection::Left, ..self.clone() },
-                (GameDirection::Down, Rotation::Left) => Self { d: GameDirection::Right, ..self.clone() },
-                (GameDirection::Left, Rotation::Left) => Self { d: GameDirection::Down, ..self.clone() },
-                (GameDirection::Right, Rotation::Left) => Self { d: GameDirection::Up, ..self.clone() },
-                (_, Rotation::None) => self.clone(),
+            (GameDirection::Up, Rotation::Right) => Self { d: GameDirection::Right, ..self.clone() },
+            (GameDirection::Down, Rotation::Right) => Self { d: GameDirection::Left, ..self.clone() },
+            (GameDirection::Left, Rotation::Right) => Self { d: GameDirection::Up, ..self.clone() },
+            (GameDirection::Right, Rotation::Right) => Self { d: GameDirection::Down, ..self.clone() },
+            (GameDirection::Up, Rotation::Left) => Self { d: GameDirection::Left, ..self.clone() },
+            (GameDirection::Down, Rotation::Left) => Self { d: GameDirection::Right, ..self.clone() },
+            (GameDirection::Left, Rotation::Left) => Self { d: GameDirection::Down, ..self.clone() },
+            (GameDirection::Right, Rotation::Left) => Self { d: GameDirection::Up, ..self.clone() },
+            (_, Rotation::None) => self.clone(),
         }
     }
 }

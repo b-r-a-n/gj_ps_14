@@ -1,13 +1,13 @@
 use super::*;
 
-#[derive(PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub enum Intensity {
     Low = 1,
     Medium,
     High,
 }
 
-#[derive(PartialEq, Eq, Component)]
+#[derive(Clone, PartialEq, Eq, Component)]
 pub enum Tile {
     Empty,
     Wall,

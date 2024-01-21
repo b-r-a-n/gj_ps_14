@@ -48,9 +48,9 @@ pub fn apply_card_actions (
                     .expect("Failed to get the deck");
                 let mut hand = hands.get_mut(action.hand)
                     .expect("Failed to get the hand");
-                let card = deck.draw()
-                    .expect("Failed to draw a card");
-                hand.add(card);
+                if let Some(card) = deck.draw() {
+                    hand.add(card);
+                }
             },
             CardActionType::Recycle(action) => {
                 let mut hand = hands.get_single_mut()
@@ -111,6 +111,8 @@ pub fn apply_card (
     played_cards: Query<(Entity, &WasPlayed)>,
     card_instances: Query<&ContentID>,
     game_positions: Query<&GamePosition>,
+    grid: Query<&Grid>,
+    tiles: Query<&Tile>,
 ) {
     let (player_id, energy, water) = player.get_single().expect("There should only be one player");
     for (was_played_id, played_card) in played_cards.iter() {
@@ -134,16 +136,35 @@ pub fn apply_card (
             }
         });
         match &card_info.position_change {
-            MovementInfo { position: TileTarget::Offset(dist), rotation: rot} => {
+            MovementInfo { position: TileTarget::FacingDist(dist), rotation: rot} => {
                 let base_pos = game_positions.get(player_id)
                     .expect("Failed to get player position");
-                let new_pos = base_pos.rotated(&rot).offset(*dist);
+                let new_pos = base_pos.rotated(&rot).offset((*dist, 0));
                 commands.spawn(Change {
                     entity: player_id,
                     updated_value: new_pos
                 });
             }
             _ => {},
+        }
+        match &card_info.water_damage {
+            DamageInfo { damage_target: target, amount: _} => {
+                let grid = grid.get_single()
+                    .expect("Failed to get grid");
+                let base_pos = game_positions.get(player_id)
+                    .expect("Failed to get player position");
+                let target_positions = target.get_positions(base_pos);
+                for pos in target_positions.iter() {
+                    if let Some(tile_id) = grid.get(pos) {
+                        if let Tile::Fire(_) = tiles.get(tile_id).unwrap() {
+                            commands.spawn(Change {
+                                entity: tile_id,
+                                updated_value: Tile::Empty
+                            });
+                        }
+                    }
+                }
+            },
         }
         turn_state.set(TurnState::Animating);
         commands.entity(was_played_id).despawn_recursive();

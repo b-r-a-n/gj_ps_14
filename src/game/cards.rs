@@ -141,13 +141,22 @@ pub struct MovementInfo {
 pub struct DamageInfo {
     pub damage_target: TileTarget,
     pub amount: u32,
-    pub pre_condition: bool,
+}
+
+impl DamageInfo {
+    pub fn none() -> Self {
+        Self {
+            damage_target: TileTarget::FacingDist(0),
+            amount: 0,
+        }
+    }
 }
 
 #[derive(Component)]
 pub struct CardInfo {
     pub resource_cost: ResourceInfo,
     pub position_change: MovementInfo,
+    pub water_damage: DamageInfo,
     pub texture_index: usize,
 }
 
@@ -176,8 +185,14 @@ pub struct Damageable(pub Vec<Entity>);
 pub struct Grid(pub Vec<Vec<Entity>>);
 
 impl Grid {
-    pub fn get(&self, pos: &GamePosition) -> Entity {
-        self.0[pos.y as usize][pos.x as usize]
+    pub fn get(&self, pos: &GamePosition) -> Option<Entity> {
+        if pos.y < 0 || pos.x < 0 {
+            return None;
+        }
+        if pos.y > self.0.len() as i32 || pos.x > self.0[0].len() as i32 {
+            return None;
+        }
+        Some(self.0[pos.y as usize][pos.x as usize])
     }
 
     pub fn neighbors(&self, pos: &GamePosition) -> Vec<Entity> {
@@ -198,19 +213,47 @@ impl Grid {
                 if neighbor.x as usize >= self.0.len() || neighbor.y as usize >= self.0[0].len() {
                     continue;
                 }
-                entities.push(self.get(&neighbor));
+                if (x.abs() + y.abs()) > 1 {
+                    continue;
+                }
+                if let Some(ent) = self.get(&neighbor) {
+                    entities.push(ent);
+                }
             }
         }
         entities
     }
 }
 
+pub struct Offset {
+    pub facing: i32,
+    pub tangent: i32,
+
+}
 pub enum TileTarget {
-    Offset(i32),
+    FacingDist(i32),
+    FacingOffsets(Vec<Offset>),
+}
+
+impl TileTarget {
+    pub fn get_positions(&self, base: &GamePosition) -> Vec<GamePosition> {
+        let mut positions = Vec::new();
+        match self {
+            TileTarget::FacingDist(dist) => {
+                positions.push(base.offset((*dist, 0)));
+            }
+            TileTarget::FacingOffsets(offsets) => {
+                for offset in offsets.iter() {
+                    positions.push(base.offset((offset.facing, offset.tangent)));
+                }
+            }
+        }
+        positions
+    }
 }
 
 // ContentID is useful when trying to serialize/deserialize the game state
-#[derive(Clone, Component, Eq, PartialEq, Hash)]
+#[derive(Clone, Component, Debug, Eq, PartialEq, Hash)]
 pub struct ContentID(pub usize);
 
 pub fn despawn_card_infos(
@@ -228,8 +271,8 @@ pub struct CardInfoMap(pub HashMap<ContentID, CardInfo>);
 pub fn load_card_infos(
     mut map: ResMut<CardInfoMap>,
 ) {
-    // TODO: This info will eventually come from some sort of asset stored on disk
     let mut card_infos = HashMap::new();
+    // Forward
     card_infos.insert(ContentID(1),
         CardInfo {
             resource_cost: ResourceInfo {
@@ -237,12 +280,14 @@ pub fn load_card_infos(
                 water: 0,
             },
             position_change: MovementInfo {
-                position: TileTarget::Offset(1),
+                position: TileTarget::FacingDist(1),
                 rotation: Rotation::None,
             },
+            water_damage: DamageInfo::none(),
             texture_index: 0,
         }
     );
+    // Backward
     card_infos.insert(ContentID(2),
         CardInfo {
             resource_cost: ResourceInfo {
@@ -250,12 +295,14 @@ pub fn load_card_infos(
                 water: 0,
             },
             position_change: MovementInfo {
-                position: TileTarget::Offset(-1),
+                position: TileTarget::FacingDist(-1),
                 rotation: Rotation::None,
             },
+            water_damage: DamageInfo::none(),
             texture_index: 1,
         }
     );
+    // Face Right
     card_infos.insert(ContentID(3),
         CardInfo {
             resource_cost: ResourceInfo {
@@ -263,12 +310,14 @@ pub fn load_card_infos(
                 water: 0,
             },
             position_change: MovementInfo {
-                position: TileTarget::Offset(0),
+                position: TileTarget::FacingDist(0),
                 rotation: Rotation::Right,
             },
+            water_damage: DamageInfo::none(),
             texture_index: 2,
         }
     );
+    // Face Left
     card_infos.insert(ContentID(4),
         CardInfo {
             resource_cost: ResourceInfo {
@@ -276,9 +325,10 @@ pub fn load_card_infos(
                 water: 0,
             },
             position_change: MovementInfo {
-                position: TileTarget::Offset(0),
+                position: TileTarget::FacingDist(0),
                 rotation: Rotation::Left,
             },
+            water_damage: DamageInfo::none(),
             texture_index: 3,
         }
     );
@@ -289,8 +339,12 @@ pub fn load_card_infos(
                 water: 1,
             },
             position_change: MovementInfo {
-                position: TileTarget::Offset(0),
+                position: TileTarget::FacingDist(0),
                 rotation: Rotation::None,
+            },
+            water_damage: DamageInfo {
+                damage_target: TileTarget::FacingDist(1),
+                amount: 1,
             },
             texture_index: 4,
         }
@@ -302,8 +356,16 @@ pub fn load_card_infos(
                 water: 1,
             },
             position_change: MovementInfo {
-                position: TileTarget::Offset(0),
+                position: TileTarget::FacingDist(0),
                 rotation: Rotation::None,
+            },
+            water_damage: DamageInfo {
+                damage_target: TileTarget::FacingOffsets(vec![
+                    Offset { tangent: -1, facing: 2 },
+                    Offset { tangent:  0, facing: 2 },
+                    Offset { tangent:  1, facing: 2 },
+                ]),
+                amount: 1,
             },
             texture_index: 5,
         }
@@ -315,8 +377,17 @@ pub fn load_card_infos(
                 water: 2,
             },
             position_change: MovementInfo {
-                position: TileTarget::Offset(0),
+                position: TileTarget::FacingDist(0),
                 rotation: Rotation::None,
+            },
+            water_damage: DamageInfo {
+                damage_target: TileTarget::FacingOffsets(vec![
+                    Offset { tangent: -1, facing:  0 },
+                    Offset { tangent:  0, facing:  1 },
+                    Offset { tangent:  1, facing:  0 },
+                    Offset { tangent:  0, facing: -1 },
+                ]),
+                amount: 1,
             },
             texture_index: 6,
         }
@@ -328,8 +399,20 @@ pub fn load_card_infos(
                 water: 3,
             },
             position_change: MovementInfo {
-                position: TileTarget::Offset(0),
+                position: TileTarget::FacingDist(0),
                 rotation: Rotation::None,
+            },
+            water_damage: DamageInfo {
+                damage_target: TileTarget::FacingOffsets(vec![
+                    Offset { tangent:  0, facing:  1 },
+                    Offset { tangent: -1, facing:  2 },
+                    Offset { tangent:  0, facing:  2 },
+                    Offset { tangent:  1, facing:  2 },
+                    Offset { tangent: -2, facing:  3 },
+                    Offset { tangent:  0, facing:  3 },
+                    Offset { tangent:  2, facing:  3 },
+                ]),
+                amount: 1,
             },
             texture_index: 7,
         }

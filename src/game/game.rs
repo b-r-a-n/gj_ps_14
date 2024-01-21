@@ -32,8 +32,8 @@ pub fn check_for_turn_over(
     playable_cards: Query<&CardStatus, With<InHand>>,
 ) {
     if playable_cards.iter().filter(|card| card.is_playable()).count() < 1 {
-        info!("Turn is over");
-        next_turn_state.set(TurnState::Ended);
+        info!("Turn is over. Press enter");
+        next_turn_state.set(TurnState::WaitingForInput);
     } else {
         next_turn_state.set(current_turn_state.next())
     }

@@ -45,6 +45,7 @@ pub fn spawn_cards(
     deck_list: Res<DeckList>,
     card_sprites: Res<CardSpriteSheet>,
 ) {
+    info!("Spawning cards from list: {:?}", deck_list.0);
     let mut deck = deck.get_single_mut().expect("Should be exactly 1 deck");
     for content_id in deck_list.0.iter() {
         let card_instance_id = commands.spawn((
@@ -67,21 +68,29 @@ pub fn despawn_cards(
 }
 
 const SPAWN_POINTS : [[Option<(i32, i32)>; 5]; 5] = [
-    [Some((3, 1)), None, None, None, None],
+    [Some((1, 3)), None, None, None, None],
     [Some((2, 2)), None, None, None, None],
-    [Some((3, 1)), Some((3, 2)), None, None, None],
-    [Some((2, 2)), Some((3, 2)), None, None, None],
+    [Some((3, 3)), None, None, None, None],
+    [Some((4, 1)), Some((3, 3)), None, None, None],
     [Some((2, 2)), Some((3, 2)), Some((3, 1)), None, None],
 ];
 const MAP_SIZES : [(i32, i32); 5] = [
-    (3, 1),
+    (1, 3),
     (3, 3),
-    (4, 4),
+    (3, 3),
     (5, 5),
     (6, 6),
 ];
+const DECK_LISTS: [[Option<usize>; 16]; 5] = [
+    [Some(1),Some(5),None,None,None,None,None,None,None,None,None,None,None,None,None,None,],
+    [Some(1),Some(5),Some(3),None,None,None,None,None,None,None,None,None,None,None,None,None,],
+    [Some(1),Some(5),Some(3),None,None,None,None,None,None,None,None,None,None,None,None,None,],
+    [Some(1),Some(5),Some(3),Some(4),None,None,None,None,None,None,None,None,None,None,None,None,],
+    [Some(1),Some(5),Some(3),Some(4),Some(8),None,None,None,None,None,None,None,None,None,None,None,],
+];
 pub fn prepare_for_new_level(
     mut map: ResMut<MapParameters>,
+    mut deck_list: ResMut<DeckList>,
     mut deck: Query<&mut Deck, With<Player>>,
     mut hand: Query<&mut Hand, With<Player>>,
     mut position: Query<&mut GamePosition, With<Player>>,
@@ -93,18 +102,22 @@ pub fn prepare_for_new_level(
         rows: MAP_SIZES[*level_index].1,
         flame_spawner: FlameSpawner::Static(SPAWN_POINTS[*level_index].iter().cloned().flatten().collect()),
     };
-    *level_index += 1;
-    *level_index %= SPAWN_POINTS.len();
-
     // Reset the transitory player state
     let mut position = position.get_single_mut().expect("Should be exactly 1 player");
     position.x = 1;
     position.y = 1;
     position.d = GameDirection::Up;
 
+    // Update the deck list
+    deck_list.0 = DECK_LISTS[*level_index].iter().flatten().cloned().map(|id| ContentID(id)).collect();
+
     // Reset the transitory card state
     deck.get_single_mut().expect("Should be exactly 1 deck").reset();
     hand.get_single_mut().expect("Should be exactly 1 deck").reset();
+
+    *level_index += 1;
+    *level_index %= SPAWN_POINTS.len();
+
 }
 
 pub fn start_turn(
@@ -120,11 +133,12 @@ pub fn start_turn(
     }
 }
 
-fn restore_energy(
-    mut energy: Query<&mut Energy, With<Player>>,
+fn restore_resources(
+    mut energy: Query<(&mut Energy, &mut Water), With<Player>>,
 ) {
-    let mut energy = energy.get_single_mut().expect("Should be exactly 1 energy");
+    let (mut energy, mut water) = energy.get_single_mut().expect("Should be exactly 1 energy");
     energy.current = energy.maxium/2;
+    water.current = water.maxium/2;
 }
 
 fn grow_flames(
@@ -209,7 +223,7 @@ fn put_flames_out(
     }
     let pos = pos.get_single().expect("Should only be one player position");
     let grid = grid.get_single().expect("Failed to get grid");
-    let tile_id = grid.get(pos);
+    let tile_id = grid.get(pos).expect("Failed to get tile id");
     let mut tile = tiles.get_mut(tile_id).expect("Failed to get tile");
     *tile = Tile::Empty;
 }
@@ -252,10 +266,10 @@ fn update_playability(
             continue;
         }
         match &card_info.position_change {
-            MovementInfo { position: TileTarget::Offset(dist), rotation: rot} => {
-                let target_pos = position.rotated(rot).offset(*dist);
+            MovementInfo { position: TileTarget::FacingDist(dist), rotation: rot} => {
+                let target_pos = position.rotated(rot).offset((*dist, 0));
                 let tile_id = tile_grid.get(&target_pos);
-                if blocked_tiles.get(tile_id).is_ok() {
+                if tile_id.is_none() || blocked_tiles.get(tile_id.unwrap()).is_ok() {
                     *status = CardStatus::Unplayable;
                     continue;
                 } 
@@ -311,7 +325,7 @@ impl Plugin for GamePlugin {
             ))
             .add_systems(OnEnter(TurnState::Starting), (
                 fill_hand_with_cards, 
-                restore_energy,
+                restore_resources,
                 )
                 .run_if(in_state(GameState::Playing)
             ))
@@ -340,6 +354,7 @@ impl Plugin for GamePlugin {
                 apply_change::<GamePosition>, 
                 apply_change::<Energy>, 
                 apply_change::<Water>, 
+                apply_change::<Tile>, 
                 apply_card,
                 apply_card_actions, 
                 check_for_level_end,
