@@ -92,7 +92,7 @@ impl bevy::ecs::system::Command for SpawnResourceUI {
                     align_items: AlignItems::Center,
                     ..default()
                 },
-                background_color: Color::BLUE.into(),
+                background_color: Color::rgb(2.0/255.0, 204.0/255.0, 254.0/255.0).into(),
                 texture_atlas: world.get_resource::<IconSpriteSheet>().unwrap().0.clone(),
                 texture_atlas_image: UiTextureAtlasImage {index: 1, ..default()},
                 ..default()
@@ -103,7 +103,7 @@ impl bevy::ecs::system::Command for SpawnResourceUI {
                     "",
                     TextStyle {
                         font_size: 20.0,
-                        color: Color::BLUE,
+                        color: Color::rgb(2.0/255.0, 204.0/255.0, 254.0/255.0),
                         ..default()
                     }
                 )

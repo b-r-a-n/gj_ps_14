@@ -224,7 +224,7 @@ impl bevy::ecs::system::Command for SpawnHandUI {
                             "",
                             TextStyle {
                                 font_size: 24.0,
-                                color: Color::BLUE,
+                                color: Color::rgb(2.0/255.0, 204.0/255.0, 254.0/255.0),
                                 ..default()
                             }
                         ),
