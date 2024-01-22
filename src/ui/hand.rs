@@ -24,21 +24,30 @@ const CARD_HEIGHT: f32 = 200.0;
 
 impl bevy::ecs::system::Command for SpawnHandUI {
     fn apply(self, world: &mut World) {
+        let bottom_container_id = world.spawn((
+            NodeBundle {
+                style: Style {
+                    width: Val::Percent(100.0),
+                    position_type: PositionType::Absolute,
+                    bottom: Val::Px(0.0),
+                    justify_content: JustifyContent::Center,
+                    ..default()
+                },
+                ..default()
+            },
+            HandUI,
+        )).id();
         let hand_id = world.spawn((
             NodeBundle {
                 style: Style {
                     flex_direction: FlexDirection::Row,
                     align_items: AlignItems::End,
-                    position_type: PositionType::Absolute,
-                    bottom: Val::Px(0.0),
-                    right: Val::Px(0.0),
                     border: UiRect::right(Val::Px(8.0)),
                     ..default()
                 },
                 background_color: Color::BLACK.into(),
                 ..default()
             },
-            HandUI,
         )).id();
         let icon_atlas = world.get_resource::<IconSpriteSheet>().unwrap().0.clone();
         let dock = world.spawn((
@@ -129,6 +138,7 @@ impl bevy::ecs::system::Command for SpawnHandUI {
             .id()
         }).collect();
         let mut hand = world.get_entity_mut(hand_id).unwrap();
+        hand.set_parent(bottom_container_id);
         hand.push_children(&vec![dock]);
         hand.push_children(&cards);
     }
