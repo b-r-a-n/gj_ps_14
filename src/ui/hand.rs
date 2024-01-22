@@ -9,6 +9,16 @@ pub struct SpawnHandUI;
 #[derive(Component)]
 pub struct CardUISlot(usize);
 
+
+#[derive(Component)]
+pub struct DeckUIText;
+
+#[derive(Component)]
+pub struct RecycledUIText;
+
+#[derive(Component)]
+pub struct DiscardedUIText;
+
 const CARD_WIDTH: f32 = 140.0;
 const CARD_HEIGHT: f32 = 200.0;
 
@@ -30,6 +40,64 @@ impl bevy::ecs::system::Command for SpawnHandUI {
             },
             HandUI,
         )).id();
+        let icon_atlas = world.get_resource::<IconSpriteSheet>().unwrap().0.clone();
+        let dock = world.spawn((
+            NodeBundle {
+                style: Style {
+                    flex_direction: FlexDirection::Column,
+                    align_items: AlignItems::Baseline,
+                    justify_content: JustifyContent::SpaceEvenly,
+                    width: Val::Px(112.0),
+                    height: Val::Px(CARD_HEIGHT),
+                    margin: UiRect { left: Val::Px(8.0), bottom: Val::Px(8.0), top: Val::Px(8.0), ..default() },
+                    ..default()
+                },
+                ..default()
+
+            },
+        )).with_children(|parent| {
+            (2..=4).for_each(|i| {
+                parent.spawn((
+                    NodeBundle {
+                        style: Style {
+                            flex_direction: FlexDirection::Row,
+                            align_items: AlignItems::Center,
+                            ..default()
+                        },
+                        ..default()
+                    },
+                )).with_children(|icon_container| {
+                    icon_container.spawn((
+                        AtlasImageBundle {
+                            style: Style {
+                                width: Val::Px(64.0),
+                                height: Val::Px(32.0),
+                                ..default()
+                            },
+                            texture_atlas:icon_atlas.clone(), 
+                            texture_atlas_image: UiTextureAtlasImage {index: i, ..default()},
+                            ..default()
+                        },
+                    ));
+                    let mut icon_text = icon_container.spawn((
+                        TextBundle::from_section(
+                            "", 
+                            TextStyle { 
+                                font_size: 32.0,
+                                ..default() 
+                            }
+                        ),
+                    ));
+                    match i { 
+                        2 => {icon_text.insert(DeckUIText); },
+                        3 => {icon_text.insert(RecycledUIText); }, 
+                        4 => {icon_text.insert(DiscardedUIText); }, 
+                        _ => panic!("Invalid icon index") 
+                    }
+                });
+            })
+        })
+        .id();
         let cards: Vec<Entity> = (0..5).map(|i| {
             world.spawn((
                 NodeBundle {
@@ -61,6 +129,7 @@ impl bevy::ecs::system::Command for SpawnHandUI {
             .id()
         }).collect();
         let mut hand = world.get_entity_mut(hand_id).unwrap();
+        hand.push_children(&vec![dock]);
         hand.push_children(&cards);
     }
 }
@@ -87,6 +156,36 @@ pub fn update_playable_indicator(
             borders.get_mut(parent.get()).unwrap().0 = Color::NONE.into();
         }
     }
+}
+
+pub fn update_deck_ui(
+    changed_decks: Query<&Deck, Changed<Deck>>,
+    mut deck_text: Query<&mut Text, With<DeckUIText>>,
+) {
+    if changed_decks.is_empty() { return; }
+    let deck = changed_decks.get_single().expect("There should only be one deck");
+    deck_text.get_single_mut().expect("There should only be one deck text")
+        .sections[0].value = format!("{}", deck.cards.len());
+}
+
+pub fn update_recycled_ui(
+    changed_decks: Query<&Deck, Changed<Deck>>,
+    mut recycled_text: Query<&mut Text, With<RecycledUIText>>,
+) {
+    if changed_decks.is_empty() { return; }
+    let deck = changed_decks.get_single().expect("There should only be one deck");
+    recycled_text.get_single_mut().expect("There should only be one deck text")
+        .sections[0].value = format!("{}", deck.recycled.len());
+}
+
+pub fn update_discarded_ui(
+    changed_decks: Query<&Deck, Changed<Deck>>,
+    mut discarded_text: Query<&mut Text, With<DiscardedUIText>>,
+) {
+    if changed_decks.is_empty() { return; }
+    let deck = changed_decks.get_single().expect("There should only be one deck");
+    discarded_text.get_single_mut().expect("There should only be one deck text")
+        .sections[0].value = format!("{}", deck.discarded.len());
 }
 
 pub fn update_hand_ui(

@@ -45,7 +45,15 @@ pub fn spawn_game_ui(
 impl Plugin for GameUIPlugin {
     fn build(&self, app: &mut App) {
         app
-            .add_systems(Update, (update_energy_ui, update_water_ui, update_hand_ui, update_playable_indicator)
+            .add_systems(Update, (
+                update_energy_ui, 
+                update_water_ui, 
+                update_deck_ui, 
+                update_recycled_ui, 
+                update_discarded_ui, 
+                update_hand_ui, 
+                update_playable_indicator
+            )
                 .run_if(in_state(GameState::Playing)))
         ;
     }
