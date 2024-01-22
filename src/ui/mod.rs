@@ -45,6 +45,7 @@ pub fn spawn_game_ui(
 impl Plugin for GameUIPlugin {
     fn build(&self, app: &mut App) {
         app
+            .add_event::<CardClicked>()
             .add_systems(Update, (
                 update_energy_ui, 
                 update_water_ui, 
@@ -55,7 +56,9 @@ impl Plugin for GameUIPlugin {
                 update_hand_title_texts,
                 update_hand_energy_texts,
                 update_hand_water_texts,
-                update_playable_indicator
+                update_interactions,
+                update_playable_indicator,
+                handle_click.run_if(in_state(TurnState::WaitingForInput)),
             )
                 .run_if(in_state(GameState::Playing)))
         ;

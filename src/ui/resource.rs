@@ -130,7 +130,6 @@ pub fn update_energy_ui(
         .expect("Found more than one player energy");
     let mut text = text.get_single_mut()
         .expect("Found more than one energy UI text");
-    info!("Energy changed to {:?}", energy.current);
     text.sections[0].value = format!("{}/{}", energy.current, energy.maxium);
 }
 
@@ -145,6 +144,5 @@ pub fn update_water_ui(
         .expect("Found more than one player energy");
     let mut text = text.get_single_mut()
         .expect("Found more than one water UI text");
-    info!("Water changed to {:?}", water.current);
     text.sections[0].value = format!("{}/{}", water.current, water.maxium);
 }

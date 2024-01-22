@@ -45,7 +45,6 @@ pub fn spawn_cards(
     deck_list: Res<DeckList>,
     card_sprites: Res<CardSpriteSheet>,
 ) {
-    info!("Spawning cards from list: {:?}", deck_list.0);
     let mut deck = deck.get_single_mut().expect("Should be exactly 1 deck");
     for content_id in deck_list.0.iter() {
         let card_instance_id = commands.spawn((
@@ -199,7 +198,6 @@ fn check_for_level_end(
             _ => {}
         }
     }
-    info!("Fire count: {} | Empty count: {}", fire_count, empty_count);
     if empty_count == 0 {
         info!("Level ended | Failure");
         next_app_state.set(AppState::MainMenu);
@@ -243,6 +241,30 @@ impl CardStatus {
             _ => false,
         }
     }
+}
+
+fn play_clicked_card(
+    mut commands: Commands,
+    mut events: EventReader<CardClicked>,
+    deck: Query<(Entity, &Deck), With<Player>>,
+    hand: Query<(Entity, &Hand), With<Player>>,
+    status: Query<&CardStatus>,
+) {
+    for event in events.read() {
+        let ((deck_id, _), (hand_id, _)) = (deck.get_single().expect("Should be exactly 1 deck"), hand.get_single().expect("Should be exactly 1 hand"));
+        if let Some(card_instance_id) = event.card_instance.0 {
+            if let Ok(card_status) = status.get(card_instance_id) {
+                if let CardStatus::Playable = card_status {
+                    commands.spawn(CardActionType::Play(Play {
+                        card: card_instance_id,
+                        deck: deck_id,
+                        hand: hand_id,
+                    }));
+                }
+            } 
+        }
+    }
+
 }
 
 fn update_playability(
@@ -363,6 +385,7 @@ impl Plugin for GamePlugin {
                 sync_hand, 
                 update_tiles,
                 put_flames_out,
+                play_clicked_card.run_if(in_state(TurnState::WaitingForInput)),
                 ).run_if(in_state(GameState::Playing)))
             ;
     }

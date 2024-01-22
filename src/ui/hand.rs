@@ -1,3 +1,5 @@
+use bevy::ui::RelativeCursorPosition;
+
 use super::*;
 
 #[derive(Component)]
@@ -28,8 +30,41 @@ pub struct EnergyText;
 #[derive(Component)]
 pub struct WaterText;
 
+#[derive(Event)]
+pub struct CardClicked {
+    pub card_instance: CardInstance,
+}
+
 const CARD_WIDTH: f32 = 140.0;
 const CARD_HEIGHT: f32 = 200.0;
+
+pub fn handle_click(
+    button_input: Res<Input<MouseButton>>,
+    cursor_positions: Query<(Entity, &RelativeCursorPosition, &CardInstance)>,
+    mut down_on_entity: Local<Option<Entity>>,
+    mut events: EventWriter<CardClicked>,
+) {
+    if button_input.just_pressed(MouseButton::Left) {
+        for (entity, cursor_position, _) in cursor_positions.iter() {
+            if cursor_position.mouse_over() {
+                *down_on_entity = Some(entity);
+            }
+        }
+    }
+    if button_input.just_released(MouseButton::Left) {
+        for (entity, cursor_position, card_instance) in cursor_positions.iter() {
+            if cursor_position.mouse_over() {
+                if down_on_entity.as_ref().is_some() && entity == *down_on_entity.as_ref().unwrap() {
+                    events.send(CardClicked { card_instance: card_instance.clone() });
+                }
+            }
+        }
+        *down_on_entity = None;
+    }
+}
+
+#[derive(Clone, Component)]
+pub struct CardInstance(pub Option<Entity>);
 
 impl bevy::ecs::system::Command for SpawnHandUI {
     fn apply(self, world: &mut World) {
@@ -133,6 +168,10 @@ impl bevy::ecs::system::Command for SpawnHandUI {
                     background_color: Color::DARK_GRAY.into(),
                     ..default()
                 },
+                CardInstance(None),
+                CardUISlot(i),
+                Interaction::default(),
+                RelativeCursorPosition::default(),
             )).with_children(|parent| {
                 parent.spawn((
                     TextBundle::from_section(
@@ -330,6 +369,17 @@ pub fn update_hand_water_texts(
                 text.sections[0].value = "".to_string();
             }
         }
+    }
+}
+
+pub fn update_interactions(
+    hands: Query<&Hand, Changed<Hand>>,
+    mut card_uis: Query<(&CardUISlot, &mut CardInstance)>,
+) {
+    if hands.is_empty() { return; }
+    let hand = hands.get_single().expect("There should only be one player hand");
+    for (slot, mut card_instance) in card_uis.iter_mut() {
+        card_instance.0 = hand.0[slot.0];
     }
 }
 
