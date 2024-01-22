@@ -158,6 +158,8 @@ pub struct CardInfo {
     pub position_change: MovementInfo,
     pub water_damage: DamageInfo,
     pub texture_index: usize,
+    pub name: String,
+    pub description: String,
 }
 
 #[derive(Component)]
@@ -275,6 +277,8 @@ pub fn load_card_infos(
     // Forward
     card_infos.insert(ContentID(1),
         CardInfo {
+            name: "Forward".to_string(),
+            description: "Move forward 1 tile".to_string(),
             resource_cost: ResourceInfo {
                 energy: 1,
                 water: 0,
@@ -290,6 +294,8 @@ pub fn load_card_infos(
     // Backward
     card_infos.insert(ContentID(2),
         CardInfo {
+            name: "Backward".to_string(),
+            description: "Move backward 1 tile".to_string(),
             resource_cost: ResourceInfo {
                 energy: 1,
                 water: 0,
@@ -305,6 +311,8 @@ pub fn load_card_infos(
     // Face Right
     card_infos.insert(ContentID(3),
         CardInfo {
+            name: "Right".to_string(),
+            description: "Rotate facing direction to the right".to_string(),
             resource_cost: ResourceInfo {
                 energy: 1,
                 water: 0,
@@ -320,6 +328,8 @@ pub fn load_card_infos(
     // Face Left
     card_infos.insert(ContentID(4),
         CardInfo {
+            name: "Left".to_string(),
+            description: "Rotate facing direction to the left".to_string(),
             resource_cost: ResourceInfo {
                 energy: 1,
                 water: 0,
@@ -334,6 +344,8 @@ pub fn load_card_infos(
     );
     card_infos.insert(ContentID(5),
         CardInfo {
+            name: "Squirt".to_string(),
+            description: "Extinguish fire 1 tile away in facing direction".to_string(),
             resource_cost: ResourceInfo {
                 energy: 0,
                 water: 1,
@@ -351,6 +363,8 @@ pub fn load_card_infos(
     );
     card_infos.insert(ContentID(6),
         CardInfo {
+            name: "Splash".to_string(),
+            description: "Extinguish up to 3 fires in a row that are 2 tiles away in facing direction".to_string(),
             resource_cost: ResourceInfo {
                 energy: 0,
                 water: 1,
@@ -372,6 +386,8 @@ pub fn load_card_infos(
     );
     card_infos.insert(ContentID(7),
         CardInfo {
+            name: "Sprinkle".to_string(),
+            description: "Extinguish fire 1 tile away in each cardinal direction".to_string(),
             resource_cost: ResourceInfo {
                 energy: 0,
                 water: 2,
@@ -394,6 +410,8 @@ pub fn load_card_infos(
     );
     card_infos.insert(ContentID(8),
         CardInfo {
+            name: "Spray".to_string(),
+            description: "Extinguish fire in a cone in the facing direction".to_string(),
             resource_cost: ResourceInfo {
                 energy: 0,
                 water: 3,

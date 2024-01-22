@@ -51,7 +51,10 @@ impl Plugin for GameUIPlugin {
                 update_deck_ui, 
                 update_recycled_ui, 
                 update_discarded_ui, 
-                update_hand_ui, 
+                update_hand_images, 
+                update_hand_title_texts,
+                update_hand_energy_texts,
+                update_hand_water_texts,
                 update_playable_indicator
             )
                 .run_if(in_state(GameState::Playing)))
