@@ -288,6 +288,7 @@ impl Plugin for GamePlugin {
             .init_resource::<PlayerSpriteSheet>()
             .init_resource::<CardSpriteSheet>()
             .init_resource::<TileSpriteSheet>()
+            .init_resource::<IconSpriteSheet>()
             .init_resource::<CardInfoMap>()
             .init_resource::<DeckList>()
             .init_resource::<MapParameters>()
