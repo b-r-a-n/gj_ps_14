@@ -31,7 +31,12 @@ pub fn check_for_turn_over(
     mut next_turn_state: ResMut<NextState<TurnState>>,
     playable_cards: Query<&CardStatus, With<InHand>>,
 ) {
-    if playable_cards.iter().filter(|card| card.is_playable()).count() < 1 {
+    if playable_cards
+        .iter()
+        .filter(|card| card.is_playable())
+        .count()
+        < 1
+    {
         info!("Turn is over. Press enter");
         next_turn_state.set(TurnState::WaitingForInput);
     } else {
@@ -67,9 +72,7 @@ impl StateTransition for TurnState {
     }
 }
 
-pub fn schedule_transition<U: Component + Default>(
-    mut commands: Commands,
-) {
+pub fn schedule_transition<U: Component + Default>(mut commands: Commands) {
     commands.spawn(U::default());
 }
 

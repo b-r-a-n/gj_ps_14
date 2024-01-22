@@ -40,7 +40,9 @@ pub fn sync_hand(
     hands: Query<(Entity, &Hand), Changed<Hand>>,
     cards: Query<Entity, With<ContentID>>,
 ) {
-    if hands.is_empty() { return ; }
+    if hands.is_empty() {
+        return;
+    }
     let (_, hand) = hands.get_single().expect("Should be exactly 1 hand");
     for card_instance_id in cards.iter() {
         if hand.0.contains(&Some(card_instance_id)) {
@@ -70,7 +72,7 @@ impl Deck {
         self.cards.shuffle(&mut rng);
     }
     pub fn draw(&mut self) -> Option<Entity> {
-        if self.cards.is_empty(){
+        if self.cards.is_empty() {
             self.cards = self.recycled.drain(..).collect();
             self.shuffle();
         }
@@ -92,10 +94,7 @@ impl Deck {
     }
 }
 
-pub fn sync_deck(
-    mut commands: Commands,
-    decks: Query<(Entity, &Deck), Changed<Deck>>,
-) {
+pub fn sync_deck(mut commands: Commands, decks: Query<(Entity, &Deck), Changed<Deck>>) {
     for (_, deck) in decks.iter() {
         for card in deck.cards.iter() {
             commands.entity(*card).insert(InDeck);
@@ -230,7 +229,6 @@ impl Grid {
 pub struct Offset {
     pub facing: i32,
     pub tangent: i32,
-
 }
 pub enum TileTarget {
     FacingDist(i32),
@@ -258,10 +256,7 @@ impl TileTarget {
 #[derive(Clone, Component, Debug, Eq, PartialEq, Hash)]
 pub struct ContentID(pub usize);
 
-pub fn despawn_card_infos(
-    mut commands: Commands,
-    card_infos: Query<Entity, With<ContentID>>,
-) {
+pub fn despawn_card_infos(mut commands: Commands, card_infos: Query<Entity, With<ContentID>>) {
     for entity in card_infos.iter() {
         commands.entity(entity).despawn_recursive();
     }
@@ -270,12 +265,11 @@ pub fn despawn_card_infos(
 #[derive(Default, Resource)]
 pub struct CardInfoMap(pub HashMap<ContentID, CardInfo>);
 
-pub fn load_card_infos(
-    mut map: ResMut<CardInfoMap>,
-) {
+pub fn load_card_infos(mut map: ResMut<CardInfoMap>) {
     let mut card_infos = HashMap::new();
     // Forward
-    card_infos.insert(ContentID(1),
+    card_infos.insert(
+        ContentID(1),
         CardInfo {
             name: "Forward".to_string(),
             description: "Move forward 1 tile".to_string(),
@@ -289,10 +283,11 @@ pub fn load_card_infos(
             },
             water_damage: DamageInfo::none(),
             texture_index: 0,
-        }
+        },
     );
     // Backward
-    card_infos.insert(ContentID(2),
+    card_infos.insert(
+        ContentID(2),
         CardInfo {
             name: "Backward".to_string(),
             description: "Move backward 1 tile".to_string(),
@@ -306,10 +301,11 @@ pub fn load_card_infos(
             },
             water_damage: DamageInfo::none(),
             texture_index: 1,
-        }
+        },
     );
     // Face Right
-    card_infos.insert(ContentID(3),
+    card_infos.insert(
+        ContentID(3),
         CardInfo {
             name: "Right".to_string(),
             description: "Rotate facing direction to the right".to_string(),
@@ -323,10 +319,11 @@ pub fn load_card_infos(
             },
             water_damage: DamageInfo::none(),
             texture_index: 2,
-        }
+        },
     );
     // Face Left
-    card_infos.insert(ContentID(4),
+    card_infos.insert(
+        ContentID(4),
         CardInfo {
             name: "Left".to_string(),
             description: "Rotate facing direction to the left".to_string(),
@@ -340,9 +337,10 @@ pub fn load_card_infos(
             },
             water_damage: DamageInfo::none(),
             texture_index: 3,
-        }
+        },
     );
-    card_infos.insert(ContentID(5),
+    card_infos.insert(
+        ContentID(5),
         CardInfo {
             name: "Squirt".to_string(),
             description: "Extinguish fire 1 tile away in facing direction".to_string(),
@@ -359,12 +357,15 @@ pub fn load_card_infos(
                 amount: 1,
             },
             texture_index: 4,
-        }
+        },
     );
-    card_infos.insert(ContentID(6),
+    card_infos.insert(
+        ContentID(6),
         CardInfo {
             name: "Splash".to_string(),
-            description: "Extinguish up to 3 fires in a row that are 2 tiles away in facing direction".to_string(),
+            description:
+                "Extinguish up to 3 fires in a row that are 2 tiles away in facing direction"
+                    .to_string(),
             resource_cost: ResourceInfo {
                 energy: 0,
                 water: 1,
@@ -375,16 +376,26 @@ pub fn load_card_infos(
             },
             water_damage: DamageInfo {
                 damage_target: TileTarget::FacingOffsets(vec![
-                    Offset { tangent: -1, facing: 2 },
-                    Offset { tangent:  0, facing: 2 },
-                    Offset { tangent:  1, facing: 2 },
+                    Offset {
+                        tangent: -1,
+                        facing: 2,
+                    },
+                    Offset {
+                        tangent: 0,
+                        facing: 2,
+                    },
+                    Offset {
+                        tangent: 1,
+                        facing: 2,
+                    },
                 ]),
                 amount: 1,
             },
             texture_index: 5,
-        }
+        },
     );
-    card_infos.insert(ContentID(7),
+    card_infos.insert(
+        ContentID(7),
         CardInfo {
             name: "Sprinkle".to_string(),
             description: "Extinguish fire 1 tile away in each cardinal direction".to_string(),
@@ -398,17 +409,30 @@ pub fn load_card_infos(
             },
             water_damage: DamageInfo {
                 damage_target: TileTarget::FacingOffsets(vec![
-                    Offset { tangent: -1, facing:  0 },
-                    Offset { tangent:  0, facing:  1 },
-                    Offset { tangent:  1, facing:  0 },
-                    Offset { tangent:  0, facing: -1 },
+                    Offset {
+                        tangent: -1,
+                        facing: 0,
+                    },
+                    Offset {
+                        tangent: 0,
+                        facing: 1,
+                    },
+                    Offset {
+                        tangent: 1,
+                        facing: 0,
+                    },
+                    Offset {
+                        tangent: 0,
+                        facing: -1,
+                    },
                 ]),
                 amount: 1,
             },
             texture_index: 6,
-        }
+        },
     );
-    card_infos.insert(ContentID(8),
+    card_infos.insert(
+        ContentID(8),
         CardInfo {
             name: "Spray".to_string(),
             description: "Extinguish fire in a cone in the facing direction".to_string(),
@@ -422,18 +446,39 @@ pub fn load_card_infos(
             },
             water_damage: DamageInfo {
                 damage_target: TileTarget::FacingOffsets(vec![
-                    Offset { tangent:  0, facing:  1 },
-                    Offset { tangent: -1, facing:  2 },
-                    Offset { tangent:  0, facing:  2 },
-                    Offset { tangent:  1, facing:  2 },
-                    Offset { tangent: -2, facing:  3 },
-                    Offset { tangent:  0, facing:  3 },
-                    Offset { tangent:  2, facing:  3 },
+                    Offset {
+                        tangent: 0,
+                        facing: 1,
+                    },
+                    Offset {
+                        tangent: -1,
+                        facing: 2,
+                    },
+                    Offset {
+                        tangent: 0,
+                        facing: 2,
+                    },
+                    Offset {
+                        tangent: 1,
+                        facing: 2,
+                    },
+                    Offset {
+                        tangent: -2,
+                        facing: 3,
+                    },
+                    Offset {
+                        tangent: 0,
+                        facing: 3,
+                    },
+                    Offset {
+                        tangent: 2,
+                        facing: 3,
+                    },
                 ]),
                 amount: 1,
             },
             texture_index: 7,
-        }
+        },
     );
     *map = CardInfoMap(card_infos);
 }
