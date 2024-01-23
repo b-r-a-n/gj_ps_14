@@ -95,8 +95,12 @@ fn tile_is_flame(
 fn random_non_wall_tile(map: &MapParameters) -> (i32, i32) {
     let mut rng = rand::thread_rng();
     let x = rng.gen_range(1..=map.columns);
-    let y = rng.gen_range(1..=map.rows);
-    (x, y)
+    // Hack to prevent the flame from spawning on the start tile
+    if x == 1 {
+        (x, rng.gen_range(2..=map.rows))
+    } else {
+        (x, rng.gen_range(1..=map.rows))
+    }
 }
 
 impl bevy::ecs::system::Command for SpawnTiles {

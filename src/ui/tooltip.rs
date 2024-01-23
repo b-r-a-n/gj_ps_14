@@ -69,8 +69,7 @@ pub fn handle_hover_removed(
     mut removed: RemovedComponents<Hovered>,
     mut tooltip: Query<&mut Style, With<TooltipContainer>>,
 ) {
-    for entity in removed.read() {
-        info!("Hover removed from {:?}", entity);
+    for _ in removed.read() {
         tooltip
             .get_single_mut()
             .expect("Should be only one tooltip container")
@@ -79,24 +78,18 @@ pub fn handle_hover_removed(
 }
 
 pub fn trigger_tooltip(
-    mut hovered: Query<(Entity, &mut Hovered, &Node, &Tooltip, &GlobalTransform)>,
+    mut hovered: Query<(&mut Hovered, &Node, &Tooltip, &GlobalTransform)>,
     mut texts: Query<&mut Text>,
     mut tooltip_containers: Query<(&Children, &mut Style), With<TooltipContainer>>,
     time: Res<Time>,
 ) {
-    for (entity, mut hovered, node, tooltip, transform) in hovered.iter_mut() {
+    for (mut hovered, node, tooltip, transform) in hovered.iter_mut() {
         if !hovered.1 && time.elapsed_seconds() - hovered.0 > tooltip.threshold {
-            info!(
-                "Hovered {:?} for {:?} seconds",
-                entity,
-                time.elapsed_seconds() - hovered.0
-            );
             hovered.1 = true;
             let (children, mut container) = tooltip_containers
                 .get_single_mut()
                 .expect("Should be only one tooltip container");
             container.display = Display::Flex;
-            info!("Tooltip at: {:?}", transform.translation());
             let (width, height) = node.size().into();
             container.position_type = PositionType::Absolute;
             container.top = Val::Px(transform.translation().y - height / 2.0 - 24.0);

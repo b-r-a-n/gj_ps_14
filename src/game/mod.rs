@@ -170,6 +170,7 @@ pub enum GameMode {
     Rogue,
 }
 fn prepare_for_rogue_level(map: &mut MapParameters, _deck_list: &mut DeckList, level_index: i32) {
+    info!("Prepping for rogue level with index {}", level_index);
     let (c, r) = (map.columns.max(1), map.rows.max(1));
     *map = MapParameters {
         columns: c + 1,
@@ -215,7 +216,7 @@ pub fn prepare_for_new_level(
     mut deck: Query<&mut Deck, With<Player>>,
     mut hand: Query<&mut Hand, With<Player>>,
     mut position: Query<&mut GamePosition, With<Player>>,
-    mut level_index: ResMut<LevelIndex>,
+    level_index: Res<LevelIndex>,
 ) {
     match *mode {
         GameMode::Puzzle => {
@@ -240,8 +241,6 @@ pub fn prepare_for_new_level(
     hand.get_single_mut()
         .expect("Should be exactly 1 deck")
         .reset();
-
-    level_index.0 += 1;
 }
 
 pub fn start_turn(
@@ -304,6 +303,7 @@ fn check_for_level_end(
     mut next_app_state: ResMut<NextState<AppState>>,
     mut next_turn_state: ResMut<NextState<TurnState>>,
     mut next_game_state: ResMut<NextState<GameState>>,
+    mut level_index: ResMut<LevelIndex>,
     tiles: Query<&Tile>,
     changes: Query<Entity, Changed<Tile>>,
 ) {
@@ -329,6 +329,7 @@ fn check_for_level_end(
         next_app_state.set(AppState::LevelMenu);
         next_game_state.set(GameState::Loaded);
         next_turn_state.set(TurnState::None);
+        level_index.0 += 1;
     }
 }
 
@@ -397,7 +398,6 @@ fn end_turn_clicked(
 ) {
     let mut turn_end_event = false;
     for _ in events.read() {
-        info!("End turn clicked");
         turn_end_event = true;
     }
     if turn_end_event {
@@ -448,6 +448,15 @@ fn update_playability(
     }
 }
 
+fn reset_game(
+    mut deck_list: ResMut<DeckList>,
+    mut level_index: ResMut<LevelIndex>,
+    mut map_parameters: ResMut<MapParameters>,
+) {
+    *deck_list = DeckList::default();
+    *level_index = LevelIndex::default();
+    *map_parameters = MapParameters::default();
+}
 pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
@@ -482,8 +491,10 @@ impl Plugin for GamePlugin {
                     despawn_player,
                     despawn_tiles,
                     despawn_cards,
+                    reset_game,
                 ),
             )
+            .add_systems(Update, reset_game.run_if(resource_changed::<GameMode>()))
             .add_systems(OnExit(GameState::Playing), (despawn_tiles, despawn_cards))
             .add_systems(
                 OnEnter(GameState::Loaded),

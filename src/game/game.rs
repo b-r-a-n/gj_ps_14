@@ -37,7 +37,6 @@ pub fn check_for_turn_over(
         .count()
         < 1
     {
-        info!("Turn is over. Press enter");
         next_turn_state.set(TurnState::WaitingForInput);
     } else {
         next_turn_state.set(current_turn_state.next())
