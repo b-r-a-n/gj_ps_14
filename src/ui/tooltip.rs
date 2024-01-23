@@ -22,10 +22,13 @@ pub fn spawn_tooltip_container(mut commands: Commands) {
                     align_items: AlignItems::Center,
                     justify_content: JustifyContent::Center,
                     padding: UiRect::all(Val::Px(8.0)),
+                    max_width: Val::Vw(20.0),
+                    border: UiRect::all(Val::Px(2.0)),
                     ..default()
                 },
                 z_index: ZIndex::Global(1),
-                background_color: Color::rgba(0.0, 0.0, 0.0, 0.75).into(),
+                border_color: Color::WHITE.into(),
+                background_color: Color::rgba(0.0, 0.0, 0.0, 0.95).into(),
                 ..default()
             },
             TooltipContainer,
@@ -76,12 +79,12 @@ pub fn handle_hover_removed(
 }
 
 pub fn trigger_tooltip(
-    mut hovered: Query<(Entity, &mut Hovered, &Tooltip)>,
+    mut hovered: Query<(Entity, &mut Hovered, &Node, &Tooltip, &GlobalTransform)>,
     mut texts: Query<&mut Text>,
-    mut tooltips: Query<(&Children, &mut Style), With<TooltipContainer>>,
+    mut tooltip_containers: Query<(&Children, &mut Style), With<TooltipContainer>>,
     time: Res<Time>,
 ) {
-    for (entity, mut hovered, tooltip) in hovered.iter_mut() {
+    for (entity, mut hovered, node, tooltip, transform) in hovered.iter_mut() {
         if !hovered.1 && time.elapsed_seconds() - hovered.0 > tooltip.threshold {
             info!(
                 "Hovered {:?} for {:?} seconds",
@@ -89,10 +92,16 @@ pub fn trigger_tooltip(
                 time.elapsed_seconds() - hovered.0
             );
             hovered.1 = true;
-            let (children, mut container) = tooltips
+            let (children, mut container) = tooltip_containers
                 .get_single_mut()
                 .expect("Should be only one tooltip container");
             container.display = Display::Flex;
+            info!("Tooltip at: {:?}", transform.translation());
+            let (width, height) = node.size().into();
+            container.position_type = PositionType::Absolute;
+            container.top = Val::Px(transform.translation().y - height / 2.0 - 24.0);
+            container.left = Val::Px(transform.translation().x - width / 2.0);
+
             let child = children[0];
             texts
                 .get_mut(child)
