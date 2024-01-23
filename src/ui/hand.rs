@@ -271,7 +271,7 @@ impl bevy::ecs::system::Command for SpawnHandUI {
 pub fn update_playable_indicator(
     statuses: Query<&CardStatus>,
     hand: Query<&Hand>,
-    mut card_uis: Query<(&Parent, &CardUISlot)>,
+    mut card_uis: Query<(Entity, &CardUISlot, &CardInstance)>,
     mut borders: Query<&mut BorderColor>,
 ) {
     if hand.is_empty() {
@@ -281,16 +281,16 @@ pub fn update_playable_indicator(
         .get_single()
         .expect("There should only be one player hand");
 
-    for (parent, slot) in card_uis.iter_mut() {
+    for (ui_id, slot, _) in card_uis.iter_mut() {
         if let Some(card_instance_id) = hand.0[slot.0] {
             let status = statuses.get(card_instance_id).expect("Card without status");
             if status.is_playable() {
-                borders.get_mut(parent.get()).unwrap().0 = Color::GREEN.into();
+                borders.get_mut(ui_id).unwrap().0 = Color::GREEN.into();
             } else {
-                borders.get_mut(parent.get()).unwrap().0 = Color::RED.into();
+                borders.get_mut(ui_id).unwrap().0 = Color::RED.into();
             }
         } else {
-            borders.get_mut(parent.get()).unwrap().0 = Color::NONE.into();
+            borders.get_mut(ui_id).unwrap().0 = Color::NONE.into();
         }
     }
 }

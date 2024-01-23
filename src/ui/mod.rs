@@ -4,13 +4,17 @@ pub use hand::*;
 pub use level_menu::*;
 pub use main_menu::*;
 pub use resource::*;
+pub use tooltip::*;
 
 pub mod hand;
 pub mod level_menu;
 pub mod main_menu;
 pub mod resource;
+pub mod tooltip;
 
 pub struct GameUIPlugin;
+
+pub struct TooltipPlugin;
 
 pub struct MenuUIPlugin;
 
@@ -61,6 +65,21 @@ impl Plugin for GameUIPlugin {
             )
                 .run_if(in_state(GameState::Playing)),
         );
+    }
+}
+
+impl Plugin for TooltipPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Startup, (spawn_tooltip_container,))
+            .add_systems(
+                Update,
+                (
+                    add_tooltips_to_cards,
+                    update_hovered,
+                    trigger_tooltip,
+                    handle_hover_removed,
+                ),
+            );
     }
 }
 

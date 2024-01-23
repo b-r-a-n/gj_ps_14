@@ -148,6 +148,7 @@ fn main() {
         .add_plugins(CameraPlugin)
         .add_plugins(MenuUIPlugin)
         .add_plugins(LevelUIPlugin)
+        .add_plugins(TooltipPlugin)
         .add_plugins(GamePlugin)
         .add_systems(
             Update,
