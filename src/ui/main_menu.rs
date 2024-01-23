@@ -1,3 +1,5 @@
+use bevy::ui::RelativeCursorPosition;
+
 use super::*;
 
 struct SpawnMenuUI;
@@ -7,13 +9,15 @@ pub struct MainMenu;
 
 #[derive(Component, Debug)]
 pub enum MainMenuOption {
-    NewGame,
+    Puzzle,
+    Rogue,
     Exit,
 }
 
 #[derive(Event)]
 pub enum MainMenuEvent {
-    NewGamePressed,
+    PuzzlePressed,
+    RoguePressed,
     ExitPressed,
 }
 
@@ -33,8 +37,11 @@ pub fn handle_interactions(
 ) {
     for (interaction, option) in interaction_query.iter() {
         match (*interaction, option) {
-            (Interaction::Pressed, MainMenuOption::NewGame) => {
-                events.send(MainMenuEvent::NewGamePressed);
+            (Interaction::Pressed, MainMenuOption::Puzzle) => {
+                events.send(MainMenuEvent::PuzzlePressed);
+            }
+            (Interaction::Pressed, MainMenuOption::Rogue) => {
+                events.send(MainMenuEvent::RoguePressed);
             }
             (Interaction::Pressed, MainMenuOption::Exit) => {
                 events.send(MainMenuEvent::ExitPressed);
@@ -77,11 +84,41 @@ impl bevy::ecs::system::Command for SpawnMenuUI {
                             background_color: Color::TEAL.into(),
                             ..default()
                         },
-                        MainMenuOption::NewGame,
+                        RelativeCursorPosition::default(),
+                        Tooltip {
+                            text: "Pre-defined puzzles to help learn the game".to_string(),
+                            threshold: 0.5,
+                        },
+                        MainMenuOption::Puzzle,
                     ))
                     .with_children(|button| {
                         button.spawn((TextBundle::from_section(
-                            "New Game",
+                            "Puzzle Mode",
+                            TextStyle {
+                                font_size: 40.0,
+                                color: Color::WHITE,
+                                ..default()
+                            },
+                        ),));
+                    });
+                parent
+                    .spawn((
+                        ButtonBundle {
+                            style: Style { ..default() },
+                            background_color: Color::TEAL.into(),
+                            ..default()
+                        },
+                        RelativeCursorPosition::default(),
+                        Tooltip {
+                            text: "Randomly generated levels with deck-based progression"
+                                .to_string(),
+                            threshold: 0.5,
+                        },
+                        MainMenuOption::Rogue,
+                    ))
+                    .with_children(|button| {
+                        button.spawn((TextBundle::from_section(
+                            "Rogue Mode",
                             TextStyle {
                                 font_size: 40.0,
                                 color: Color::WHITE,

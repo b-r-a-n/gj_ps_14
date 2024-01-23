@@ -103,13 +103,20 @@ fn handle_main_menu_events(
     mut events: EventReader<MainMenuEvent>,
     mut app_state: ResMut<NextState<AppState>>,
     mut game_state: ResMut<NextState<GameState>>,
+    mut game_mode: ResMut<GameMode>,
     windows: Query<(Entity, &Window)>,
 ) {
     for event in events.read() {
         match event {
-            MainMenuEvent::NewGamePressed => {
+            MainMenuEvent::PuzzlePressed => {
                 app_state.set(AppState::LevelMenu);
                 game_state.set(GameState::Loading);
+                *game_mode = GameMode::Puzzle;
+            }
+            MainMenuEvent::RoguePressed => {
+                app_state.set(AppState::LevelMenu);
+                game_state.set(GameState::Loading);
+                *game_mode = GameMode::Rogue;
             }
             MainMenuEvent::ExitPressed => {
                 for (window_id, window) in windows.iter() {

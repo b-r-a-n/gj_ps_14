@@ -70,14 +70,33 @@ fn tile_is_wall(x: i32, y: i32, map: &MapParameters) -> bool {
     x == 0 || y == 0 || x == map.columns + 1 || y == map.rows + 1
 }
 
-fn tile_is_flame(x: i32, y: i32, map: &MapParameters) -> bool {
+fn tile_is_flame(
+    x: i32,
+    y: i32,
+    map: &MapParameters,
+    flame_count: i32,
+    pre_flames: &HashMap<(i32, i32), bool>,
+) -> bool {
     match &map.flame_spawner {
-        FlameSpawner::Chance(chance, _min_count, _max_count) => {
+        FlameSpawner::Chance(chance, _min_count, max_count) => {
+            if pre_flames.contains_key(&(x, y)) {
+                return true;
+            }
+            if flame_count >= *max_count {
+                return false;
+            }
             let mut rng = rand::thread_rng();
             rng.gen_bool((1.0 - chance).into())
         }
         FlameSpawner::Static(positions) => positions.contains(&(x, y)),
     }
+}
+
+fn random_non_wall_tile(map: &MapParameters) -> (i32, i32) {
+    let mut rng = rand::thread_rng();
+    let x = rng.gen_range(1..=map.columns);
+    let y = rng.gen_range(1..=map.rows);
+    (x, y)
 }
 
 impl bevy::ecs::system::Command for SpawnTiles {
@@ -93,11 +112,23 @@ impl bevy::ecs::system::Command for SpawnTiles {
         let mut is_wall;
         let mut is_flame;
         let mut entities: Vec<Vec<Entity>> = Vec::new();
+        let mut flame_count = 0;
+        let mut pre_def_flames = HashMap::new();
+        match map.flame_spawner {
+            FlameSpawner::Chance(_, min_count, _) => {
+                for _ in 0..min_count {
+                    // TODO this can hit the same tile more than once
+                    let (x, y) = random_non_wall_tile(&map);
+                    pre_def_flames.insert((x, y), true);
+                }
+            }
+            _ => {}
+        }
         for y in 0..=map.rows + 1 {
             entities.push(Vec::new());
             for x in 0..=map.columns + 1 {
                 is_wall = tile_is_wall(x, y, &map);
-                is_flame = tile_is_flame(x, y, &map);
+                is_flame = tile_is_flame(x, y, &map, flame_count, &pre_def_flames);
                 let mut ec = world.spawn((
                     GamePosition { x, y, ..default() },
                     SpriteSheetBundle {
@@ -117,6 +148,7 @@ impl bevy::ecs::system::Command for SpawnTiles {
                         Tile::Wall
                     } else {
                         if is_flame {
+                            flame_count += 1;
                             Tile::Fire(Intensity::Low)
                         } else {
                             Tile::Empty

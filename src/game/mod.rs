@@ -162,26 +162,67 @@ const DECK_LISTS: [[Option<usize>; 16]; 5] = [
         None,
     ],
 ];
-pub fn prepare_for_new_level(
-    mut map: ResMut<MapParameters>,
-    mut deck_list: ResMut<DeckList>,
-    mut deck: Query<&mut Deck, With<Player>>,
-    mut hand: Query<&mut Hand, With<Player>>,
-    mut position: Query<&mut GamePosition, With<Player>>,
-    mut level_index: Local<usize>,
-) {
-    // Update the MapParameters resource
+
+#[derive(Default, Resource)]
+pub enum GameMode {
+    #[default]
+    Puzzle,
+    Rogue,
+}
+fn prepare_for_rogue_level(map: &mut MapParameters, _deck_list: &mut DeckList, level_index: i32) {
+    let (c, r) = (map.columns.max(1), map.rows.max(1));
     *map = MapParameters {
-        columns: MAP_SIZES[*level_index].0,
-        rows: MAP_SIZES[*level_index].1,
+        columns: c + 1,
+        rows: r + 1,
+        flame_spawner: FlameSpawner::Chance(0.1, 1, level_index.max(1)),
+    };
+}
+
+fn prepare_for_puzzle_level(map: &mut MapParameters, deck_list: &mut DeckList, level_index: i32) {
+    let level_index = (level_index as usize) % SPAWN_POINTS.len();
+    *map = MapParameters {
+        columns: MAP_SIZES[level_index as usize].0,
+        rows: MAP_SIZES[level_index as usize].1,
         flame_spawner: FlameSpawner::Static(
-            SPAWN_POINTS[*level_index]
+            SPAWN_POINTS[level_index as usize]
                 .iter()
                 .cloned()
                 .flatten()
                 .collect(),
         ),
     };
+    deck_list.0 = DECK_LISTS[level_index]
+        .iter()
+        .flatten()
+        .cloned()
+        .map(|id| ContentID(id))
+        .collect();
+}
+
+#[derive(Resource)]
+pub struct LevelIndex(pub i32);
+
+impl Default for LevelIndex {
+    fn default() -> Self {
+        Self(0)
+    }
+}
+
+pub fn prepare_for_new_level(
+    mode: Res<GameMode>,
+    mut map: ResMut<MapParameters>,
+    mut deck_list: ResMut<DeckList>,
+    mut deck: Query<&mut Deck, With<Player>>,
+    mut hand: Query<&mut Hand, With<Player>>,
+    mut position: Query<&mut GamePosition, With<Player>>,
+    mut level_index: ResMut<LevelIndex>,
+) {
+    match *mode {
+        GameMode::Puzzle => {
+            prepare_for_puzzle_level(&mut map, &mut deck_list, level_index.0);
+        }
+        GameMode::Rogue => prepare_for_rogue_level(&mut map, &mut deck_list, level_index.0),
+    }
     // Reset the transitory player state
     let mut position = position
         .get_single_mut()
@@ -191,12 +232,6 @@ pub fn prepare_for_new_level(
     position.d = GameDirection::Up;
 
     // Update the deck list
-    deck_list.0 = DECK_LISTS[*level_index]
-        .iter()
-        .flatten()
-        .cloned()
-        .map(|id| ContentID(id))
-        .collect();
 
     // Reset the transitory card state
     deck.get_single_mut()
@@ -206,8 +241,7 @@ pub fn prepare_for_new_level(
         .expect("Should be exactly 1 deck")
         .reset();
 
-    *level_index += 1;
-    *level_index %= SPAWN_POINTS.len();
+    level_index.0 += 1;
 }
 
 pub fn start_turn(
@@ -425,6 +459,8 @@ impl Plugin for GamePlugin {
             .init_resource::<CardInfoMap>()
             .init_resource::<DeckList>()
             .init_resource::<MapParameters>()
+            .init_resource::<GameMode>()
+            .init_resource::<LevelIndex>()
             .add_plugins(ui::GameUIPlugin)
             .add_state::<GameState>()
             .add_state::<TurnState>()
@@ -441,7 +477,12 @@ impl Plugin for GamePlugin {
             )
             .add_systems(
                 OnEnter(GameState::None),
-                (despawn_card_infos, despawn_player),
+                (
+                    despawn_card_infos,
+                    despawn_player,
+                    despawn_tiles,
+                    despawn_cards,
+                ),
             )
             .add_systems(OnExit(GameState::Playing), (despawn_tiles, despawn_cards))
             .add_systems(
