@@ -357,6 +357,20 @@ fn play_clicked_card(
     }
 }
 
+fn end_turn_clicked(
+    mut events: EventReader<EndTurnClicked>,
+    mut turn_state: ResMut<NextState<TurnState>>,
+) {
+    let mut turn_end_event = false;
+    for _ in events.read() {
+        info!("End turn clicked");
+        turn_end_event = true;
+    }
+    if turn_end_event {
+        turn_state.set(TurnState::Ended);
+    }
+}
+
 fn update_playability(
     player_info: Query<(&GamePosition, &Energy, &Water, &Hand), With<Player>>,
     mut card_instances: Query<(&ContentID, &mut CardStatus)>,
@@ -499,6 +513,7 @@ impl Plugin for GamePlugin {
                     update_tiles,
                     put_flames_out,
                     play_clicked_card.run_if(in_state(TurnState::WaitingForInput)),
+                    end_turn_clicked.run_if(in_state(TurnState::WaitingForInput)),
                 )
                     .run_if(in_state(GameState::Playing)),
             );

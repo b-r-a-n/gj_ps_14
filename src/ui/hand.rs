@@ -34,30 +34,44 @@ pub struct CardClicked {
     pub card_instance: CardInstance,
 }
 
-const CARD_WIDTH: f32 = 140.0;
-const CARD_HEIGHT: f32 = 200.0;
+#[derive(Event)]
+pub struct EndTurnClicked;
+
+pub(in crate::ui) const CARD_WIDTH: f32 = 140.0;
+pub(in crate::ui) const CARD_HEIGHT: f32 = 200.0;
 
 pub fn handle_click(
     button_input: Res<Input<MouseButton>>,
-    cursor_positions: Query<(Entity, &RelativeCursorPosition, &CardInstance)>,
+    cursor_positions: Query<(
+        Entity,
+        &RelativeCursorPosition,
+        Option<&CardInstance>,
+        Option<&Button>,
+    )>,
     mut down_on_entity: Local<Option<Entity>>,
-    mut events: EventWriter<CardClicked>,
+    mut card_clicked: EventWriter<CardClicked>,
+    mut end_turn_clicked: EventWriter<EndTurnClicked>,
 ) {
     if button_input.just_pressed(MouseButton::Left) {
-        for (entity, cursor_position, _) in cursor_positions.iter() {
+        for (entity, cursor_position, _, _) in cursor_positions.iter() {
             if cursor_position.mouse_over() {
                 *down_on_entity = Some(entity);
             }
         }
     }
     if button_input.just_released(MouseButton::Left) {
-        for (entity, cursor_position, card_instance) in cursor_positions.iter() {
+        for (entity, cursor_position, card, button) in cursor_positions.iter() {
             if cursor_position.mouse_over() {
                 if down_on_entity.as_ref().is_some() && entity == *down_on_entity.as_ref().unwrap()
                 {
-                    events.send(CardClicked {
-                        card_instance: card_instance.clone(),
-                    });
+                    if let Some(card_instance) = card {
+                        card_clicked.send(CardClicked {
+                            card_instance: card_instance.clone(),
+                        });
+                    }
+                    if let Some(_) = button {
+                        end_turn_clicked.send(EndTurnClicked);
+                    }
                 }
             }
         }
@@ -98,7 +112,7 @@ impl bevy::ecs::system::Command for SpawnHandUI {
             },))
             .id();
         let icon_atlas = world.get_resource::<IconSpriteSheet>().unwrap().0.clone();
-        let dock = world
+        let deck_dock = world
             .spawn((NodeBundle {
                 style: Style {
                     flex_direction: FlexDirection::Column,
@@ -119,14 +133,26 @@ impl bevy::ecs::system::Command for SpawnHandUI {
             .with_children(|parent| {
                 (2..=4).for_each(|i| {
                     parent
-                        .spawn((NodeBundle {
-                            style: Style {
-                                flex_direction: FlexDirection::Row,
-                                align_items: AlignItems::Center,
+                        .spawn((
+                            NodeBundle {
+                                style: Style {
+                                    flex_direction: FlexDirection::Row,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
                                 ..default()
                             },
-                            ..default()
-                        },))
+                            Interaction::default(),
+                            Tooltip {
+                                text: match i {
+                                    2 => "Number of cards in Deck".to_string(),
+                                    3 => "Number of cards that will be Recycled".to_string(),
+                                    4 => "Number oc cards that have been Discarded".to_string(),
+                                    _ => panic!("Invalid icon index"),
+                                },
+                                threshold: 0.0,
+                            },
+                        ))
                         .with_children(|icon_container| {
                             icon_container.spawn((AtlasImageBundle {
                                 style: Style {
@@ -261,10 +287,12 @@ impl bevy::ecs::system::Command for SpawnHandUI {
                     .id()
             })
             .collect();
+        let resource_dock = spawn_resource_ui(world);
         let mut hand = world.get_entity_mut(hand_id).unwrap();
         hand.set_parent(bottom_container_id);
-        hand.push_children(&vec![dock]);
+        hand.push_children(&vec![deck_dock]);
         hand.push_children(&cards);
+        hand.push_children(&vec![resource_dock]);
     }
 }
 
@@ -272,25 +300,46 @@ pub fn update_playable_indicator(
     statuses: Query<&CardStatus>,
     hand: Query<&Hand>,
     mut card_uis: Query<(Entity, &CardUISlot, &CardInstance)>,
+    end_turn_button: Query<Entity, (With<Button>, With<EndTurnButton>)>,
     mut borders: Query<&mut BorderColor>,
 ) {
+    let mut button_id = None;
+    if !end_turn_button.is_empty() {
+        button_id = Some(
+            end_turn_button
+                .get_single()
+                .expect("Should only be one end turn button"),
+        );
+    }
     if hand.is_empty() {
+        if let Some(button_id) = button_id {
+            borders.get_mut(button_id).unwrap().0 = Color::YELLOW_GREEN.into();
+        }
         return;
     }
     let hand = hand
         .get_single()
         .expect("There should only be one player hand");
 
+    let mut playable_count = 0;
     for (ui_id, slot, _) in card_uis.iter_mut() {
         if let Some(card_instance_id) = hand.0[slot.0] {
             let status = statuses.get(card_instance_id).expect("Card without status");
             if status.is_playable() {
+                playable_count += 1;
                 borders.get_mut(ui_id).unwrap().0 = Color::GREEN.into();
             } else {
                 borders.get_mut(ui_id).unwrap().0 = Color::RED.into();
             }
         } else {
             borders.get_mut(ui_id).unwrap().0 = Color::NONE.into();
+        }
+    }
+    if let Some(button_id) = button_id {
+        if playable_count > 0 {
+            borders.get_mut(button_id).unwrap().0 = Color::WHITE.into();
+        } else {
+            borders.get_mut(button_id).unwrap().0 = Color::YELLOW_GREEN.into();
         }
     }
 }

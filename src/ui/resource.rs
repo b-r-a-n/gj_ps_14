@@ -1,4 +1,5 @@
 use super::*;
+use bevy::ui::RelativeCursorPosition;
 
 #[derive(Component)]
 pub struct EnergyUI;
@@ -14,6 +15,9 @@ pub struct SpawnResourceUI;
 
 #[derive(Resource)]
 pub struct IconSpriteSheet(pub Handle<TextureAtlas>);
+
+#[derive(Component)]
+pub struct EndTurnButton;
 
 impl FromWorld for IconSpriteSheet {
     fn from_world(world: &mut World) -> Self {
@@ -31,95 +35,140 @@ impl FromWorld for IconSpriteSheet {
     }
 }
 
-impl bevy::ecs::system::Command for SpawnResourceUI {
-    fn apply(self, world: &mut World) {
-        let container_id = world
-            .spawn((
-                NodeBundle {
-                    style: Style {
-                        flex_direction: FlexDirection::Column,
-                        row_gap: Val::Px(8.0),
+pub fn spawn_resource_ui(world: &mut World) -> Entity {
+    let container_id = world
+        .spawn((
+            NodeBundle {
+                style: Style {
+                    flex_direction: FlexDirection::Column,
+                    align_items: AlignItems::Center,
+                    justify_content: JustifyContent::SpaceEvenly,
+                    width: Val::Px(112.0),
+                    height: Val::Px(CARD_HEIGHT),
+                    margin: UiRect {
+                        left: Val::Px(8.0),
+                        bottom: Val::Px(8.0),
+                        top: Val::Px(8.0),
                         ..default()
                     },
                     ..default()
                 },
-                ResourceUI,
-            ))
-            .id();
-        world
-            .spawn((AtlasImageBundle {
-                style: Style {
-                    width: Val::Px(64.0),
-                    height: Val::Px(32.0),
-                    left: Val::Px(6.0),
-                    top: Val::Px(40.0),
-                    align_items: AlignItems::Center,
-                    ..default()
-                },
-                background_color: Color::YELLOW.into(),
-                texture_atlas: world.get_resource::<IconSpriteSheet>().unwrap().0.clone(),
-                texture_atlas_image: UiTextureAtlasImage {
-                    index: 0,
-                    ..default()
-                },
                 ..default()
-            },))
-            .with_children(|icon| {
-                icon.spawn((
-                    TextBundle::from_section(
-                        "",
-                        TextStyle {
-                            font_size: 20.0,
-                            color: Color::YELLOW,
-                            ..default()
-                        },
-                    )
-                    .with_style(Style {
-                        left: Val::Percent(10.0),
-                        width: Val::Percent(80.0),
-                        ..default()
-                    }),
-                    EnergyUI,
-                ));
-            })
-            .set_parent(container_id);
-        world
-            .spawn((AtlasImageBundle {
+            },
+            ResourceUI,
+        ))
+        .id();
+    world
+        .spawn((
+            ButtonBundle {
                 style: Style {
-                    width: Val::Px(64.0),
-                    height: Val::Px(32.0),
-                    left: Val::Px(6.0),
-                    top: Val::Px(40.0),
+                    width: Val::Percent(100.0),
+                    height: Val::Px(64.0),
+                    border: UiRect::all(Val::Px(2.0)),
                     align_items: AlignItems::Center,
+                    justify_content: JustifyContent::Center,
                     ..default()
                 },
-                background_color: Color::rgb(2.0 / 255.0, 204.0 / 255.0, 254.0 / 255.0).into(),
-                texture_atlas: world.get_resource::<IconSpriteSheet>().unwrap().0.clone(),
-                texture_atlas_image: UiTextureAtlasImage {
-                    index: 1,
-                    ..default()
-                },
+                border_color: Color::WHITE.into(),
+                background_color: Color::NONE.into(),
                 ..default()
-            },))
-            .with_children(|icon| {
-                icon.spawn((
-                    TextBundle::from_section(
-                        "",
-                        TextStyle {
-                            font_size: 20.0,
-                            color: Color::rgb(2.0 / 255.0, 204.0 / 255.0, 254.0 / 255.0),
-                            ..default()
-                        },
-                    )
-                    .with_style(Style {
-                        left: Val::Percent(10.0),
-                        width: Val::Percent(80.0),
+            },
+            EndTurnButton,
+            RelativeCursorPosition::default(),
+            Tooltip {
+                text: "End your turn".to_string(),
+                threshold: 1.5,
+            },
+        ))
+        .with_children(|button| {
+            button.spawn((TextBundle::from_section(
+                "End Turn",
+                TextStyle {
+                    font_size: 14.0,
+                    color: Color::WHITE,
+                    ..default()
+                },
+            ),));
+        })
+        .set_parent(container_id);
+    world
+        .spawn((AtlasImageBundle {
+            style: Style {
+                width: Val::Px(64.0),
+                height: Val::Px(32.0),
+                left: Val::Px(6.0),
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            background_color: Color::YELLOW.into(),
+            texture_atlas: world.get_resource::<IconSpriteSheet>().unwrap().0.clone(),
+            texture_atlas_image: UiTextureAtlasImage {
+                index: 0,
+                ..default()
+            },
+            ..default()
+        },))
+        .with_children(|icon| {
+            icon.spawn((
+                TextBundle::from_section(
+                    "",
+                    TextStyle {
+                        font_size: 20.0,
+                        color: Color::YELLOW,
                         ..default()
-                    }),
-                    WaterUI,
-                ));
-            })
-            .set_parent(container_id);
+                    },
+                )
+                .with_style(Style {
+                    left: Val::Percent(10.0),
+                    width: Val::Percent(80.0),
+                    ..default()
+                }),
+                EnergyUI,
+            ));
+        })
+        .set_parent(container_id);
+    world
+        .spawn((AtlasImageBundle {
+            style: Style {
+                width: Val::Px(64.0),
+                height: Val::Px(32.0),
+                left: Val::Px(6.0),
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            background_color: Color::rgb(2.0 / 255.0, 204.0 / 255.0, 254.0 / 255.0).into(),
+            texture_atlas: world.get_resource::<IconSpriteSheet>().unwrap().0.clone(),
+            texture_atlas_image: UiTextureAtlasImage {
+                index: 1,
+                ..default()
+            },
+            ..default()
+        },))
+        .with_children(|icon| {
+            icon.spawn((
+                TextBundle::from_section(
+                    "",
+                    TextStyle {
+                        font_size: 20.0,
+                        color: Color::rgb(2.0 / 255.0, 204.0 / 255.0, 254.0 / 255.0),
+                        ..default()
+                    },
+                )
+                .with_style(Style {
+                    left: Val::Percent(10.0),
+                    width: Val::Percent(80.0),
+                    ..default()
+                }),
+                WaterUI,
+            ));
+        })
+        .set_parent(container_id);
+    container_id
+}
+
+impl bevy::ecs::system::Command for SpawnResourceUI {
+    fn apply(self, world: &mut World) {
+        spawn_resource_ui(world);
     }
 }
 

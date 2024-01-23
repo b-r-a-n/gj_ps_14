@@ -34,7 +34,6 @@ pub fn spawn_game_ui(
     player_sprite_sheet: Res<PlayerSpriteSheet>,
     players: Query<Entity, With<Player>>,
 ) {
-    commands.add(SpawnResourceUI::default());
     commands.add(SpawnHandUI::default());
     for player_id in players.iter() {
         commands.entity(player_id).insert(SpriteSheetBundle {
@@ -47,24 +46,26 @@ pub fn spawn_game_ui(
 
 impl Plugin for GameUIPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<CardClicked>().add_systems(
-            Update,
-            (
-                update_energy_ui,
-                update_water_ui,
-                update_deck_ui,
-                update_recycled_ui,
-                update_discarded_ui,
-                update_hand_images,
-                update_hand_title_texts,
-                update_hand_energy_texts,
-                update_hand_water_texts,
-                update_interactions,
-                update_playable_indicator,
-                handle_click.run_if(in_state(TurnState::WaitingForInput)),
-            )
-                .run_if(in_state(GameState::Playing)),
-        );
+        app.add_event::<CardClicked>()
+            .add_event::<EndTurnClicked>()
+            .add_systems(
+                Update,
+                (
+                    update_energy_ui,
+                    update_water_ui,
+                    update_deck_ui,
+                    update_recycled_ui,
+                    update_discarded_ui,
+                    update_hand_images,
+                    update_hand_title_texts,
+                    update_hand_energy_texts,
+                    update_hand_water_texts,
+                    update_interactions,
+                    update_playable_indicator,
+                    handle_click.run_if(in_state(TurnState::WaitingForInput)),
+                )
+                    .run_if(in_state(GameState::Playing)),
+            );
     }
 }
 
