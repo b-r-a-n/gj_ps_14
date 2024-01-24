@@ -6,15 +6,26 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="icon" href="data:,">
-    <title>Flame Fighters - Design Document</title>
+    <title>Flame Fighter - Design Document</title>
 
     <style>
         body,
         html {
-            margin: 0;
+            margin-left: 10;
+            background-color: rgb(20, 20, 20);
+            color:rgb(236, 232, 226);
             padding: 0;
             width: 100vw;
             height: 100vh;
+        }
+        a {
+            color:rgb(236, 232, 226);
+        }
+        a:visited {
+            color:rgb(236, 232, 226);
+        }
+        a:hover {
+            color:rgb(56, 65, 90);
         }
 
         canvas {
@@ -24,36 +35,68 @@
 </head>
 
 <body>
-<h1 id="design-document-flame-fighters">Design Document: Flame Fighters</h1>
-<p><em>Made for Pirate Software&#39;s Game Jam 14</em></p>
+<h1 id="design-document-flame-fighters">Design Document: Flame Fighter</h1>
+<p><em>Made for Pirate Software&#39;s Game Jam 14</em> (<a href="https://itch.io/jam/pirate">link</a>)</p>
 <hr>
 <h2 id="premise">Premise</h2>
-<p>A deadly fire is spreading quickly. Players must limit the devastation by taking control of robots that can be used to extinguish the fire.</p>
+<p>A deadly fire is spreading. Limit the devastation by taking control of a fire fighting robot that can be used to extinguish the flames.</p>
+<hr>
 <h2 id="gameplay">Gameplay</h2>
 <h3 id="overview">Overview</h3>
-<p>The player must progress through several levels of increasing difficulty. Each level represents a small area that is at risk of being overwhelmed by fire. </p>
-<p>The player is in control of a robot in the area that has various means to prevent the fire from spreading.</p>
-<p>Actions the robot can take represented as cards. To take an action, the player plays an available card.</p>
-<p>Each turn the player draws a new hand of cards and the hottest parts of the fire spread.</p>
-<p>The player does not start with a full deck of cards but gradually builds one up by choosing upgrades for their robot.</p>
+<p>Each level is a grid of tiles. Some of the tiles are burning.</p>
+<p>The player has a deck of cards that correspond to actions that can be taken by a robot that is also present in the grid.</p>
+<p>Using their deck, the player must extinguish the flame before the fire spreads to every tile.</p>
 <h3 id="mechanics">Mechanics</h3>
 <h4 id="level">Level</h4>
-<p>Each level is a 2D grid of tiles. The level is complete when all burning tiles are extinguished. There may be multiple criteria for completing a level but at a minimum, the level is failed if all of the non-robot tiles are burning.</p>
+<p>Each level is a 2D grid of tiles.</p> 
+<p>The level is complete when all burning tiles are extinguished.</p> 
+<p>The level is failed if all of the non-robot tiles are burning.</p>
+<h4 id="turn">Turn</h4>
+<p>Each turn the player draws cards from their deck until their hand is full or there are no cards remaining.</p>
+<p>The player may play as many cards as they are able each turn. Any unplayed cards remain in their hand.</p>
+<p>At the end of the turn, each burning tile increases in intensity or spreads to nearby tiles (if it is at maximum intensity)</p>
+<h4 id="cards">Cards</h4>
+<p>The player's cards are drawn from a deck that is defined at the start of the level (what is in the deck depends on the game mode)</p>
+<p>Cards can be played if the <strong>resources</strong> are available and, in the case of movement, the tile is not blocked.</p>
+<p>When played, a card's actions are applied, the player's resources are consumed, and it is <strong>recycled</strong> by default.</p>
+<p><strong>Recylced</strong> cards go back into the deck once it is empty. The deck is shuffled when this happens.</p>
+<p>Cards may also be <strong>discarded</strong>. Discarded cards are removed from the deck for the remainder of the level.</p>
 <h4 id="tiles">Tiles</h4>
 <ul>
-<li><strong>Burning tile:</strong> At the end of a turn, tiles adjacent to this one have a change to start burning. This is how the fire will <em>spread</em>.</li>
-<li><strong>Environment tile:</strong> Part of the environment that can be interacted with. The tile may contain a material for an upgrade, a temporary powerup, an obstruction, or even something dangerous like a highly flammable material.</li>
-<li><strong>Robot tile:</strong> At the start of a level, the player&#39;s robot is placed somewhere in the environment. This is a safe tile and the starting point for the robot&#39;s fire fighting ambitions.</li>
+<li><strong>Burning:</strong> Burning tiles have 3 levels of intensity: Low, Medium, High. Each turn the intensity of the fire in each tile increases by one or spreads to nearby tiles (if it is at maximum intensity)</li> 
+<li><strong>Wall:</strong>Tiles that prevent movement but are also fireproof.</li>
+<li><strong>Empty:</strong>Tiles that can be moved onto and may also contain <strong>items</strong></li>
 </ul>
-<h4 id="turn">Turn</h4>
-<p>Progress though a level is based on turns. Each turn the player:</p>
+<h4 id="resources">Resources</h4>
 <ul>
-<li>Draws until their hand is full</li>
-<li>Has their energy restored</li>
-<li>Plays cards from their hand until they have no more playable cards or they choose to end the turn.</li>
+    <li><strong>Water:</strong> Used by cards that extinguish fire</li>
+    <li><strong>Energy:</strong> Used by cards that change the robot's position</li>
 </ul>
-<p>At the end of the turn, tiles adjacent to burning tiles roll to determine if they start burning.</p>
-<p>Depending on the content of the tile, there may be other effects when a tile starts to burn.</p>
+<h4 id="items">Items</h4>
+<p>Currently, there are 3 types of items.</p>
+<p>Items are obtained by moving onto their tile during a level.</p>
+<p>Items that are on a burning tile are destoryed.</p>
+<ul><strong>Water:</strong> Restores 1 water resource</ul> 
+<ul><strong>Battery:</strong> Restores 1 energy resource</ul> 
+<ul><strong>Card:</strong> Adds a new card to the player's deck</ul> 
+<h3>Modes</h3>
+<p>There are two main modes:</p>
+<ul>
+    <li>Puzzle mode: Pre-defined deck list and tile maps</li>
+    <li>Rogue mode: Procedurally generated tile maps with deck-based progression</li>
+</ul>
+<p>Puzzle mode is mainly meant to be used as a tutorial and expose the player to the different mechanics</p>
+<p>Rogue mode offers replayability and deckbuilding elements</p>
+<hr>
+<h2 id="development">Deverlopment Info</h2>
+<h3 id="tools">Tools</h3>
+<ul>
+    <li><a href="https://bevyengine.org/">Bevy</a> game engine</li>
+    <li><a href="https://www.aseprite.org/">Asperite</a> for pixel art</li>
+</ul>
+<h3 id="code">Code</h3>
+<p>Flame Fighter is written in Rust</p>
+<p>It is currently distributed as a wasm binary + html wrapper</p>
+<p>Source code is available at <a href="https://github.com/b-r-a-n/gj_ps_14/">github</a></p>
 </body>
-
 </html>
