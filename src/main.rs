@@ -25,6 +25,8 @@ fn handle_input(
     mut commands: Commands,
     turn_state: Res<State<TurnState>>,
     mut next_turn_state: ResMut<NextState<TurnState>>,
+    mut next_app_state: ResMut<NextState<AppState>>,
+    mut next_game_state: ResMut<NextState<GameState>>,
     mut camera_transform: Query<&mut Transform, With<MainCamera>>,
     player_state: Query<(Entity, &GamePosition, &Energy, &Hand), With<Player>>,
     statuses: Query<&CardStatus>,
@@ -39,7 +41,14 @@ fn handle_input(
             }
             next_turn_state.set(TurnState::Ended);
         }
-        Some(KeyCode::Space) => {}
+        Some(KeyCode::Escape) => {
+            if turn_state.get() != &TurnState::WaitingForInput {
+                return;
+            }
+            next_turn_state.set(TurnState::None);
+            next_app_state.set(AppState::MainMenu);
+            next_game_state.set(GameState::None);
+        }
         Some(x) if x < &KeyCode::Key6 => {
             if turn_state.get() != &TurnState::WaitingForInput {
                 return;
