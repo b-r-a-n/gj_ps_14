@@ -494,13 +494,13 @@ impl Plugin for GamePlugin {
                 (
                     despawn_card_infos,
                     despawn_player,
-                    despawn_tiles,
+                    despawn_tiles_and_items,
                     despawn_cards,
                     reset_game,
                 ),
             )
             .add_systems(Update, reset_game.run_if(resource_changed::<GameMode>()))
-            .add_systems(OnExit(GameState::Playing), (despawn_tiles, despawn_cards))
+            .add_systems(OnExit(GameState::Playing), (despawn_tiles_and_items, despawn_cards))
             .add_systems(
                 OnEnter(GameState::Loaded),
                 (prepare_for_new_level, spawn_cards, spawn_tiles).chain(),

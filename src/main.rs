@@ -159,6 +159,7 @@ fn handle_level_menu_events(
 
 fn main() {
     App::new()
+        .insert_resource(bevy::asset::AssetMetaCheck::Never)
         .add_state::<AppState>()
         .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
         .add_plugins(CameraPlugin)

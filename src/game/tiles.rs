@@ -42,7 +42,9 @@ pub fn spawn_tiles(mut commands: Commands) {
     commands.add(SpawnTiles);
 }
 
-pub fn despawn_tiles(mut commands: Commands, query: Query<Entity, Or<(With<Tile>, With<Grid>)>>) {
+pub fn despawn_tiles_and_items(
+    mut commands: Commands, 
+    query: Query<Entity, Or<(With<Tile>, With<Grid>, With<Item>)>>) {
     for entity in query.iter() {
         commands.entity(entity).despawn_recursive();
     }
