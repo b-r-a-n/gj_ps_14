@@ -1,0 +1,22 @@
+name: Create Release
+permissions:
+  contents: write
+on:
+  push:
+    tags: 
+    - '*'
+jobs:
+  create-release:
+    runs_on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: install-zip
+      run: sudo apt install zip
+
+    - name: archive-web-directory
+      run: zip flame_fighters.zip -r ./ -x "design.html" -x "*.git*"
+    
+    - uses: ncipollo/release-action@v1
+      with:
+        artifacts: flame_fighters.zip
