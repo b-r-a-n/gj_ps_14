@@ -163,8 +163,8 @@ impl bevy::ecs::system::Command for SpawnTiles {
                                 Spawner::Chance(c, _, _) => {
                                     let mut rng = rand::thread_rng();
                                     if rng.gen_bool(c.into()) {
-                                        info!("Item would spawn at {}, {} due to chance spawn config.", x, y);
-                                        items.push((Item::Water, GamePosition { x, y, ..default() }));
+                                        // TODO the content_range param should check the actual card_infos
+                                        items.push((Item::random(20), GamePosition { x, y, ..default() }));
                                     }
                                 },
                                 Spawner::Static(ref positions) => {

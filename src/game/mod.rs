@@ -171,13 +171,12 @@ pub enum GameMode {
     Rogue,
 }
 fn prepare_for_rogue_level(map: &mut MapParameters, _deck_list: &mut DeckList, level_index: i32) {
-    info!("Prepping for rogue level with index {}", level_index);
     let (c, r) = (map.columns.max(1), map.rows.max(1));
     *map = MapParameters {
         columns: c + 1,
         rows: r + 1,
         flame_spawner: Spawner::Chance(0.1, 1, level_index.max(1)),
-        item_spawner: Spawner::Chance(0.5, 1, 1),
+        item_spawner: Spawner::Chance(0.2, 1, 1),
     };
 }
 

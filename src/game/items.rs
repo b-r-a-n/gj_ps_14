@@ -7,6 +7,17 @@ pub enum Item {
     Card(ContentID),
 }
 
+impl Item {
+    pub fn random(content_range: usize) -> Self {
+        match rand::random::<u8>() % 3 {
+            0 => Self::Water,
+            1 => Self::Energy,
+            2 => Self::Card(ContentID((rand::random::<usize>() % content_range) + 1)),
+            _ => unreachable!(),
+        }
+    }
+}
+
 pub fn add_item_sprite(
     mut commands: Commands,
     sprite_sheet: Res<ItemSpriteSheet>,
