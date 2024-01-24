@@ -30,9 +30,8 @@ pub struct DeckList(pub Vec<ContentID>);
 impl Default for DeckList {
     fn default() -> Self {
         Self(
-            vec![1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4]
-                .iter()
-                .map(|id| ContentID(*id))
+            (1..=20)
+                .map(|id| ContentID(id))
                 .collect(),
         )
     }
@@ -440,6 +439,17 @@ fn update_playability(
                 rotation: rot,
             } => {
                 let target_pos = position.rotated(rot).offset((*dist, 0));
+                let tile_id = tile_grid.get(&target_pos);
+                if tile_id.is_none() || blocked_tiles.get(tile_id.unwrap()).is_ok() {
+                    *status = CardStatus::Unplayable;
+                    continue;
+                }
+            },
+            MovementInfo {
+                position: TileTarget::FacingOffsets(offsets),
+                rotation: _,
+            } => {
+                let target_pos = &TileTarget::FacingOffsets(offsets.clone()).get_positions(&position)[0];
                 let tile_id = tile_grid.get(&target_pos);
                 if tile_id.is_none() || blocked_tiles.get(tile_id.unwrap()).is_ok() {
                     *status = CardStatus::Unplayable;

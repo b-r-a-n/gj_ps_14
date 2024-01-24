@@ -87,6 +87,22 @@ impl GamePosition {
                 d: GameDirection::Up,
                 ..self.clone()
             },
+            (GameDirection::Up, Rotation::Reverse) => Self {
+                d: GameDirection::Down,
+                ..self.clone()
+            },
+            (GameDirection::Down, Rotation::Reverse) => Self {
+                d: GameDirection::Up,
+                ..self.clone()
+            },
+            (GameDirection::Left, Rotation::Reverse) => Self {
+                d: GameDirection::Right,
+                ..self.clone()
+            },
+            (GameDirection::Right, Rotation::Reverse) => Self {
+                d: GameDirection::Left,
+                ..self.clone()
+            },
             (_, Rotation::None) => self.clone(),
         }
     }

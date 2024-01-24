@@ -224,11 +224,11 @@ impl bevy::ecs::system::Command for SpawnHandUI {
                             TextBundle::from_section(
                                 "",
                                 TextStyle {
-                                    font_size: 24.0,
+                                    font_size: 18.0,
                                     color: Color::WHITE,
                                     ..default()
                                 },
-                            ),
+                            ).with_no_wrap(),
                             CardTitle,
                             CardUISlot(i),
                         ));

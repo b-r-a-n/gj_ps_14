@@ -145,6 +145,19 @@ pub fn apply_card(
                     entity: player_id,
                     updated_value: new_pos,
                 });
+            },
+            MovementInfo {
+                position: TileTarget::FacingOffsets(offsets),
+                rotation: rot,
+            } => {
+                let base_pos = game_positions
+                    .get(player_id)
+                    .expect("Failed to get player position");
+                let new_pos = &TileTarget::FacingOffsets(offsets.to_vec()).get_positions(base_pos)[0];
+                commands.spawn(Change {
+                    entity: player_id,
+                    updated_value: new_pos.rotated(&rot).clone(),
+                });
             }
             _ => {}
         }

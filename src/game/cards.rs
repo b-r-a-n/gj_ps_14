@@ -130,6 +130,7 @@ pub enum Rotation {
     None,
     Left,
     Right,
+    Reverse,
 }
 
 pub struct MovementInfo {
@@ -190,7 +191,7 @@ impl Grid {
         if pos.y < 0 || pos.x < 0 {
             return None;
         }
-        if pos.y > self.0.len() as i32 || pos.x > self.0[0].len() as i32 {
+        if pos.y >= self.0.len() as i32 || pos.x >= self.0[0].len() as i32 {
             return None;
         }
         Some(self.0[pos.y as usize][pos.x as usize])
@@ -226,6 +227,7 @@ impl Grid {
     }
 }
 
+#[derive(Clone)]
 pub struct Offset {
     pub facing: i32,
     pub tangent: i32,
@@ -478,6 +480,382 @@ pub fn load_card_infos(mut map: ResMut<CardInfoMap>) {
                 amount: 1,
             },
             texture_index: 7,
+        },
+    );
+    card_infos.insert(
+        ContentID(9),
+        CardInfo {
+            name: "Slosh".to_string(),
+            description: "Move forward and extinguish 2 tiles adjacent to the destination".to_string(),
+            resource_cost: ResourceInfo {
+                energy: 1,
+                water: 1,
+            },
+            position_change: MovementInfo {
+                position: TileTarget::FacingDist(1),
+                rotation: Rotation::None,
+            },
+            water_damage: DamageInfo {
+                damage_target: TileTarget::FacingOffsets(vec![
+                    Offset {
+                        tangent: 1,
+                        facing: 1,
+                    },
+                    Offset {
+                        tangent: -1,
+                        facing: 1,
+                    },
+                ]),
+                amount: 1,
+            },
+            texture_index: 8,
+        },
+    );
+    card_infos.insert(
+        ContentID(10),
+        CardInfo {
+            name: "Water Jet".to_string(),
+            description: "Water propels you forward and extinguishes some trailing tiles".to_string(),
+            resource_cost: ResourceInfo {
+                energy: 0,
+                water: 2,
+            },
+            position_change: MovementInfo {
+                position: TileTarget::FacingDist(1),
+                rotation: Rotation::None,
+            },
+            water_damage: DamageInfo {
+                damage_target: TileTarget::FacingOffsets(vec![
+                    Offset {
+                        tangent: 1,
+                        facing: -1,
+                    },
+                    Offset {
+                        tangent: 2,
+                        facing: -2,
+                    },
+                    Offset {
+                        tangent: -1,
+                        facing: -1,
+                    },
+                    Offset {
+                        tangent: -2,
+                        facing: -2,
+                    },
+                ]),
+                amount: 1,
+            },
+            texture_index: 9,
+        },
+    );
+    card_infos.insert(
+        ContentID(11),
+        CardInfo {
+            name: "Wave Turn Right".to_string(),
+            description: "Turn right and extinguish a row of tiles in your original facing direction".to_string(),
+            resource_cost: ResourceInfo {
+                energy: 1,
+                water: 1,
+            },
+            position_change: MovementInfo {
+                position: TileTarget::FacingDist(0),
+                rotation: Rotation::Right,
+            },
+            water_damage: DamageInfo {
+                damage_target: TileTarget::FacingOffsets(vec![
+                    Offset {
+                        tangent: 1,
+                        facing: 1,
+                    },
+                    Offset {
+                        tangent: 0,
+                        facing: 1,
+                    },
+                    Offset {
+                        tangent: -1,
+                        facing: 1,
+                    },
+                ]),
+                amount: 1,
+            },
+            texture_index: 10,
+        },
+    );
+    card_infos.insert(
+        ContentID(12),
+        CardInfo {
+            name: "Wave Turn Left".to_string(),
+            description: "Turn left and extinguish a row of tiles in your original facing direction".to_string(),
+            resource_cost: ResourceInfo {
+                energy: 1,
+                water: 1,
+            },
+            position_change: MovementInfo {
+                position: TileTarget::FacingDist(0),
+                rotation: Rotation::Left,
+            },
+            water_damage: DamageInfo {
+                damage_target: TileTarget::FacingOffsets(vec![
+                    Offset {
+                        tangent: 1,
+                        facing: 1,
+                    },
+                    Offset {
+                        tangent: 0,
+                        facing: 1,
+                    },
+                    Offset {
+                        tangent: -1,
+                        facing: 1,
+                    },
+                ]),
+                amount: 1,
+            },
+            texture_index: 11,
+        },
+    );
+    card_infos.insert(
+        ContentID(13),
+        CardInfo {
+            name: "Spin and Spray".to_string(),
+            description: "Reverse facing direction and extinguish tiles at each corner".to_string(),
+            resource_cost: ResourceInfo {
+                energy: 1,
+                water: 1,
+            },
+            position_change: MovementInfo {
+                position: TileTarget::FacingDist(0),
+                rotation: Rotation::Reverse,
+            },
+            water_damage: DamageInfo {
+                damage_target: TileTarget::FacingOffsets(vec![
+                    Offset {
+                        tangent: 1,
+                        facing: 1,
+                    },
+                    Offset {
+                        tangent: 1,
+                        facing: -1,
+                    },
+                    Offset {
+                        tangent: -1,
+                        facing: 1,
+                    },
+                    Offset {
+                        tangent: -1,
+                        facing: -1,
+                    },
+                ]),
+                amount: 1,
+            },
+            texture_index: 12,
+        },
+    );
+    card_infos.insert(
+        ContentID(14),
+        CardInfo {
+            name: "Back Blast".to_string(),
+            description: "Extinguish 3 tiles in facing direction and move backward one tile".to_string(),
+            resource_cost: ResourceInfo {
+                energy: 0,
+                water: 2,
+            },
+            position_change: MovementInfo {
+                position: TileTarget::FacingDist(-1),
+                rotation: Rotation::None,
+            },
+            water_damage: DamageInfo {
+                damage_target: TileTarget::FacingOffsets(vec![
+                    Offset {
+                        tangent: 0,
+                        facing: 1,
+                    },
+                    Offset {
+                        tangent: 0,
+                        facing: 2,
+                    },
+                    Offset {
+                        tangent: 0,
+                        facing: 3,
+                    },
+                ]),
+                amount: 1,
+            },
+            texture_index: 13,
+        },
+    );
+    card_infos.insert(
+        ContentID(15),
+        CardInfo {
+            name: "Expell".to_string(),
+            description: "Extinguish 2 tiles from each diagonal".to_string(),
+            resource_cost: ResourceInfo {
+                energy: 0,
+                water: 2,
+            },
+            position_change: MovementInfo {
+                position: TileTarget::FacingDist(0),
+                rotation: Rotation::None,
+            },
+            water_damage: DamageInfo {
+                damage_target: TileTarget::FacingOffsets(vec![
+                    Offset {
+                        tangent: 1,
+                        facing: 1,
+                    },
+                    Offset {
+                        tangent: 2,
+                        facing: 2,
+                    },
+                    Offset {
+                        tangent: -1,
+                        facing: 1,
+                    },
+                    Offset {
+                        tangent: -2,
+                        facing: 2,
+                    },
+                    Offset {
+                        tangent: 1,
+                        facing: -1,
+                    },
+                    Offset {
+                        tangent: 2,
+                        facing: -2,
+                    },
+                    Offset {
+                        tangent: -1,
+                        facing: -1,
+                    },
+                    Offset {
+                        tangent: -2,
+                        facing: -2,
+                    },
+                ]),
+                amount: 1,
+            },
+            texture_index: 14,
+        },
+    );
+    card_infos.insert(
+        ContentID(16),
+        CardInfo {
+            name: "Cross Crash".to_string(),
+            description: "Extinguish 2 tiles in each cardinal direction".to_string(),
+            resource_cost: ResourceInfo {
+                energy: 0,
+                water: 3,
+            },
+            position_change: MovementInfo {
+                position: TileTarget::FacingDist(0),
+                rotation: Rotation::None,
+            },
+            water_damage: DamageInfo {
+                damage_target: TileTarget::FacingOffsets(vec![
+                    Offset {
+                        tangent: 0,
+                        facing: 1,
+                    },
+                    Offset {
+                        tangent: 0,
+                        facing: 2,
+                    },
+                    Offset {
+                        tangent: -1,
+                        facing: 0,
+                    },
+                    Offset {
+                        tangent: -2,
+                        facing: 0,
+                    },
+                    Offset {
+                        tangent: 1,
+                        facing: 0,
+                    },
+                    Offset {
+                        tangent: 2,
+                        facing: 0,
+                    },
+                    Offset {
+                        tangent: 0,
+                        facing: -1,
+                    },
+                    Offset {
+                        tangent: 0,
+                        facing: -2,
+                    },
+                ]),
+                amount: 1,
+            },
+            texture_index: 15,
+        },
+    );
+    card_infos.insert(
+        ContentID(17),
+        CardInfo {
+            name: "Forward Right".to_string(),
+            description: "Move forward and right".to_string(),
+            resource_cost: ResourceInfo {
+                energy: 1,
+                water: 0,
+            },
+            position_change: MovementInfo {
+                position: TileTarget::FacingOffsets(vec![Offset{ tangent: 1, facing: 1}]),
+                rotation: Rotation::None,
+            },
+            water_damage: DamageInfo::none(),
+            texture_index: 16,
+        },
+    );
+    card_infos.insert(
+        ContentID(18),
+        CardInfo {
+            name: "Forward Left".to_string(),
+            description: "Move forward and left".to_string(),
+            resource_cost: ResourceInfo {
+                energy: 1,
+                water: 0,
+            },
+            position_change: MovementInfo {
+                position: TileTarget::FacingOffsets(vec![Offset{ tangent: -1, facing: 1}]),
+                rotation: Rotation::None,
+            },
+            water_damage: DamageInfo::none(),
+            texture_index: 17,
+        },
+    );
+    card_infos.insert(
+        ContentID(19),
+        CardInfo {
+            name: "Back Left".to_string(),
+            description: "Move backward and left".to_string(),
+            resource_cost: ResourceInfo {
+                energy: 1,
+                water: 0,
+            },
+            position_change: MovementInfo {
+                position: TileTarget::FacingOffsets(vec![Offset{ tangent: -1, facing: -1}]),
+                rotation: Rotation::None,
+            },
+            water_damage: DamageInfo::none(),
+            texture_index: 18,
+        },
+    );
+    card_infos.insert(
+        ContentID(20),
+        CardInfo {
+            name: "Back Right".to_string(),
+            description: "Move backward and right".to_string(),
+            resource_cost: ResourceInfo {
+                energy: 1,
+                water: 0,
+            },
+            position_change: MovementInfo {
+                position: TileTarget::FacingOffsets(vec![Offset{ tangent: 1, facing: -1}]),
+                rotation: Rotation::None,
+            },
+            water_damage: DamageInfo::none(),
+            texture_index: 19,
         },
     );
     *map = CardInfoMap(card_infos);
