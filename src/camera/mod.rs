@@ -30,10 +30,10 @@ fn center_camera_on_grid(
             }
             5..=8 => {
                 projection.scale = 1.2;
-            },
+            }
             _ => {
                 projection.scale = 1.5;
-            },
+            }
         }
         transform.translation.z = z;
     }

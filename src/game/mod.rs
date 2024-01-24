@@ -5,6 +5,7 @@ use bevy::utils::HashMap;
 pub use card::*;
 pub use cards::*;
 pub use game::*;
+pub use items::*;
 pub use player::*;
 use rand::Rng;
 pub use stats::*;
@@ -14,6 +15,7 @@ mod actions;
 mod card;
 mod cards;
 mod game;
+mod items;
 mod player;
 mod stats;
 mod tiles;
@@ -175,7 +177,8 @@ fn prepare_for_rogue_level(map: &mut MapParameters, _deck_list: &mut DeckList, l
     *map = MapParameters {
         columns: c + 1,
         rows: r + 1,
-        flame_spawner: FlameSpawner::Chance(0.1, 1, level_index.max(1)),
+        flame_spawner: Spawner::Chance(0.1, 1, level_index.max(1)),
+        item_spawner: Spawner::Chance(0.5, 1, 1),
     };
 }
 
@@ -184,13 +187,14 @@ fn prepare_for_puzzle_level(map: &mut MapParameters, deck_list: &mut DeckList, l
     *map = MapParameters {
         columns: MAP_SIZES[level_index as usize].0,
         rows: MAP_SIZES[level_index as usize].1,
-        flame_spawner: FlameSpawner::Static(
+        flame_spawner: Spawner::Static(
             SPAWN_POINTS[level_index as usize]
                 .iter()
                 .cloned()
                 .flatten()
                 .collect(),
         ),
+        item_spawner: Spawner::Static(vec![]),
     };
     deck_list.0 = DECK_LISTS[level_index]
         .iter()
@@ -465,6 +469,7 @@ impl Plugin for GamePlugin {
             .init_resource::<CardSpriteSheet>()
             .init_resource::<TileSpriteSheet>()
             .init_resource::<IconSpriteSheet>()
+            .init_resource::<ItemSpriteSheet>()
             .init_resource::<CardInfoMap>()
             .init_resource::<DeckList>()
             .init_resource::<MapParameters>()
@@ -557,6 +562,8 @@ impl Plugin for GamePlugin {
                     apply_change::<Energy>,
                     apply_change::<Water>,
                     apply_change::<Tile>,
+                    add_item_sprite,
+                    apply_item,
                     apply_card,
                     apply_card_actions,
                     check_for_level_end,

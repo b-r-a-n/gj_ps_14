@@ -19,12 +19,12 @@ pub struct SpawnTiles;
 
 #[allow(dead_code)]
 #[derive(Clone)]
-pub enum FlameSpawner {
+pub enum Spawner {
     Chance(f32, i32, i32),
     Static(Vec<(i32, i32)>),
 }
 
-impl Default for FlameSpawner {
+impl Default for Spawner {
     fn default() -> Self {
         Self::Static(vec![])
     }
@@ -34,7 +34,8 @@ impl Default for FlameSpawner {
 pub struct MapParameters {
     pub columns: i32,
     pub rows: i32,
-    pub flame_spawner: FlameSpawner,
+    pub flame_spawner: Spawner,
+    pub item_spawner: Spawner,
 }
 
 pub fn spawn_tiles(mut commands: Commands) {
@@ -78,7 +79,7 @@ fn tile_is_flame(
     pre_flames: &HashMap<(i32, i32), bool>,
 ) -> bool {
     match &map.flame_spawner {
-        FlameSpawner::Chance(chance, _min_count, max_count) => {
+        Spawner::Chance(chance, _min_count, max_count) => {
             if pre_flames.contains_key(&(x, y)) {
                 return true;
             }
@@ -88,7 +89,7 @@ fn tile_is_flame(
             let mut rng = rand::thread_rng();
             rng.gen_bool((1.0 - chance).into())
         }
-        FlameSpawner::Static(positions) => positions.contains(&(x, y)),
+        Spawner::Static(positions) => positions.contains(&(x, y)),
     }
 }
 
@@ -118,8 +119,9 @@ impl bevy::ecs::system::Command for SpawnTiles {
         let mut entities: Vec<Vec<Entity>> = Vec::new();
         let mut flame_count = 0;
         let mut pre_def_flames = HashMap::new();
+        let mut items: Vec<(Item, GamePosition)> = Vec::new();
         match map.flame_spawner {
-            FlameSpawner::Chance(_, min_count, _) => {
+            Spawner::Chance(_, min_count, _) => {
                 for _ in 0..min_count {
                     // TODO this can hit the same tile more than once
                     let (x, y) = random_non_wall_tile(&map);
@@ -155,6 +157,20 @@ impl bevy::ecs::system::Command for SpawnTiles {
                             flame_count += 1;
                             Tile::Fire(Intensity::Low)
                         } else {
+                            match map.item_spawner {
+                                Spawner::Chance(c, _, _) => {
+                                    let mut rng = rand::thread_rng();
+                                    if rng.gen_bool(c.into()) {
+                                        info!("Item would spawn at {}, {} due to chance spawn config.", x, y);
+                                        items.push((Item::Water, GamePosition { x, y, ..default() }));
+                                    }
+                                },
+                                Spawner::Static(ref positions) => {
+                                    if positions.contains(&(x, y)) {
+                                        info!("Item would spawn at {}, {} due to static spawn config.", x, y);
+                                    }
+                                }
+                            }
                             Tile::Empty
                         }
                     },
@@ -166,6 +182,7 @@ impl bevy::ecs::system::Command for SpawnTiles {
             }
         }
         world.spawn(Grid(entities));
+        world.spawn_batch(items);
     }
 }
 
