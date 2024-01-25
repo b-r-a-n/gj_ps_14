@@ -1,5 +1,3 @@
-use bevy::animation;
-
 use super::*;
 
 #[derive(Clone, Component, Debug)]
@@ -144,7 +142,13 @@ pub fn apply_card(
                     .expect("Failed to get player position");
                 let new_pos = base_pos.rotated(&rot).offset((*dist, 0));
                 commands.spawn(Animation {
-                    animation_type: AnimationType::Move(player_id, Vec2 {x: new_pos.x as f32, y: new_pos.y as f32}),
+                    animation_type: AnimationType::Move(
+                        player_id,
+                        Vec2 {
+                            x: new_pos.x as f32,
+                            y: new_pos.y as f32,
+                        },
+                    ),
                     duration: 0.35,
                     parent: None,
                 });
@@ -159,7 +163,7 @@ pub fn apply_card(
                     entity: player_id,
                     updated_value: new_pos,
                 });
-            },
+            }
             MovementInfo {
                 position: TileTarget::FacingOffsets(offsets),
                 rotation: rot,
@@ -167,15 +171,25 @@ pub fn apply_card(
                 let base_pos = game_positions
                     .get(player_id)
                     .expect("Failed to get player position");
-                let new_pos = &TileTarget::FacingOffsets(offsets.to_vec()).get_positions(base_pos)[0];
+                let new_pos =
+                    &TileTarget::FacingOffsets(offsets.to_vec()).get_positions(base_pos)[0];
                 commands.spawn(Animation {
-                    animation_type: AnimationType::Move(player_id, Vec2 {x: new_pos.x as f32, y: new_pos.y as f32}),
+                    animation_type: AnimationType::Move(
+                        player_id,
+                        Vec2 {
+                            x: new_pos.x as f32,
+                            y: new_pos.y as f32,
+                        },
+                    ),
                     duration: 0.35,
                     parent: None,
                 });
                 if rot != &Rotation::None {
                     commands.spawn(Animation {
-                        animation_type: AnimationType::Rotate(player_id, new_pos.rotated(&rot).d.get_quat()),
+                        animation_type: AnimationType::Rotate(
+                            player_id,
+                            new_pos.rotated(&rot).d.get_quat(),
+                        ),
                         duration: 0.35,
                         parent: None,
                     });
@@ -185,7 +199,6 @@ pub fn apply_card(
                     updated_value: new_pos.rotated(&rot).clone(),
                 });
             }
-            _ => {}
         }
         match &card_info.water_damage {
             DamageInfo {
@@ -200,11 +213,13 @@ pub fn apply_card(
                 for pos in target_positions.iter() {
                     if let Some(tile_id) = grid.get(pos) {
                         info!("Spawning turn blue animation");
-                        let blue_id = commands.spawn(Animation {
-                            animation_type: AnimationType::Blue(tile_id),
-                            duration: 0.35,
-                            parent: None,
-                        }).id();
+                        let blue_id = commands
+                            .spawn(Animation {
+                                animation_type: AnimationType::Blue(tile_id),
+                                duration: 0.35,
+                                parent: None,
+                            })
+                            .id();
                         if let Tile::Fire(_) = tiles.get(tile_id).unwrap() {
                             commands.spawn(Change {
                                 entity: tile_id,
@@ -218,8 +233,8 @@ pub fn apply_card(
                         }
                     }
                 }
-            },
-            _ => {},
+            }
+            _ => {}
         }
         turn_state.set(TurnState::Animating);
         commands.entity(was_played_id).despawn_recursive();

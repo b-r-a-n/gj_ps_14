@@ -37,6 +37,7 @@ pub fn spawn_game_ui(
     commands.add(SpawnHandUI::default());
     for player_id in players.iter() {
         commands.entity(player_id).insert(SpriteSheetBundle {
+            transform: Transform::from_xyz(0.0, 0.0, 1.0),
             sprite: TextureAtlasSprite::new(0),
             texture_atlas: player_sprite_sheet.0.clone(),
             ..Default::default()

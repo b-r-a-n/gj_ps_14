@@ -43,8 +43,9 @@ pub fn spawn_tiles(mut commands: Commands) {
 }
 
 pub fn despawn_tiles_and_items(
-    mut commands: Commands, 
-    query: Query<Entity, Or<(With<Tile>, With<Grid>, With<Item>, With<Animation>)>>) {
+    mut commands: Commands,
+    query: Query<Entity, Or<(With<Tile>, With<Grid>, With<Item>, With<Animation>)>>,
+) {
     for entity in query.iter() {
         commands.entity(entity).despawn_recursive();
     }
@@ -195,8 +196,7 @@ pub fn update_tiles(
 ) {
     for (tile_id, tile, mut sprite_index, animating) in tiles.iter_mut() {
         if let Some(animating) = animating {
-            let animation = animations.get(animating.0)
-                .expect("Animation should exist");
+            let animation = animations.get(animating.0).expect("Animation should exist");
             match animation.animation_type {
                 AnimationType::Blue(_) => {
                     sprite_index.index = 5;

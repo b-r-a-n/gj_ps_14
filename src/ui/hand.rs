@@ -228,7 +228,8 @@ impl bevy::ecs::system::Command for SpawnHandUI {
                                     color: Color::WHITE,
                                     ..default()
                                 },
-                            ).with_no_wrap(),
+                            )
+                            .with_no_wrap(),
                             CardTitle,
                             CardUISlot(i),
                         ));

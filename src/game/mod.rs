@@ -29,11 +29,7 @@ pub struct DeckList(pub Vec<ContentID>);
 
 impl Default for DeckList {
     fn default() -> Self {
-        Self(
-            (1..=20)
-                .map(|id| ContentID(id))
-                .collect(),
-        )
+        Self((1..=20).map(|id| ContentID(id)).collect())
     }
 }
 
@@ -443,19 +439,19 @@ fn update_playability(
                     *status = CardStatus::Unplayable;
                     continue;
                 }
-            },
+            }
             MovementInfo {
                 position: TileTarget::FacingOffsets(offsets),
                 rotation: _,
             } => {
-                let target_pos = &TileTarget::FacingOffsets(offsets.clone()).get_positions(&position)[0];
+                let target_pos =
+                    &TileTarget::FacingOffsets(offsets.clone()).get_positions(&position)[0];
                 let tile_id = tile_grid.get(&target_pos);
                 if tile_id.is_none() || blocked_tiles.get(tile_id.unwrap()).is_ok() {
                     *status = CardStatus::Unplayable;
                     continue;
                 }
             }
-            _ => {}
         }
         *status = CardStatus::Playable;
     }
@@ -509,7 +505,10 @@ impl Plugin for GamePlugin {
                 ),
             )
             .add_systems(Update, reset_game.run_if(resource_changed::<GameMode>()))
-            .add_systems(OnExit(GameState::Playing), (despawn_tiles_and_items, despawn_cards))
+            .add_systems(
+                OnExit(GameState::Playing),
+                (despawn_tiles_and_items, despawn_cards),
+            )
             .add_systems(
                 OnEnter(GameState::Loaded),
                 (prepare_for_new_level, spawn_cards, spawn_tiles).chain(),
@@ -545,7 +544,10 @@ impl Plugin for GamePlugin {
                     .chain()
                     .run_if(in_state(GameState::Playing)),
             )
-            .add_systems(Update, (animate_cards,).run_if(in_state(TurnState::Animating)))
+            .add_systems(
+                Update,
+                (animate_cards,).run_if(in_state(TurnState::Animating)),
+            )
             .add_systems(
                 Update,
                 (

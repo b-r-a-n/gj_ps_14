@@ -486,7 +486,8 @@ pub fn load_card_infos(mut map: ResMut<CardInfoMap>) {
         ContentID(9),
         CardInfo {
             name: "Slosh".to_string(),
-            description: "Move forward and extinguish 2 tiles adjacent to the destination".to_string(),
+            description: "Move forward and extinguish 2 tiles adjacent to the destination"
+                .to_string(),
             resource_cost: ResourceInfo {
                 energy: 1,
                 water: 1,
@@ -515,7 +516,8 @@ pub fn load_card_infos(mut map: ResMut<CardInfoMap>) {
         ContentID(10),
         CardInfo {
             name: "Water Jet".to_string(),
-            description: "Water propels you forward and extinguishes some trailing tiles".to_string(),
+            description: "Water propels you forward and extinguishes some trailing tiles"
+                .to_string(),
             resource_cost: ResourceInfo {
                 energy: 0,
                 water: 2,
@@ -552,7 +554,9 @@ pub fn load_card_infos(mut map: ResMut<CardInfoMap>) {
         ContentID(11),
         CardInfo {
             name: "Wave Turn Right".to_string(),
-            description: "Turn right and extinguish a row of tiles in your original facing direction".to_string(),
+            description:
+                "Turn right and extinguish a row of tiles in your original facing direction"
+                    .to_string(),
             resource_cost: ResourceInfo {
                 energy: 1,
                 water: 1,
@@ -585,7 +589,9 @@ pub fn load_card_infos(mut map: ResMut<CardInfoMap>) {
         ContentID(12),
         CardInfo {
             name: "Wave Turn Left".to_string(),
-            description: "Turn left and extinguish a row of tiles in your original facing direction".to_string(),
+            description:
+                "Turn left and extinguish a row of tiles in your original facing direction"
+                    .to_string(),
             resource_cost: ResourceInfo {
                 energy: 1,
                 water: 1,
@@ -655,7 +661,8 @@ pub fn load_card_infos(mut map: ResMut<CardInfoMap>) {
         ContentID(14),
         CardInfo {
             name: "Back Blast".to_string(),
-            description: "Extinguish 3 tiles in facing direction and move backward one tile".to_string(),
+            description: "Extinguish 3 tiles in facing direction and move backward one tile"
+                .to_string(),
             resource_cost: ResourceInfo {
                 energy: 0,
                 water: 2,
@@ -800,7 +807,10 @@ pub fn load_card_infos(mut map: ResMut<CardInfoMap>) {
                 water: 0,
             },
             position_change: MovementInfo {
-                position: TileTarget::FacingOffsets(vec![Offset{ tangent: 1, facing: 1}]),
+                position: TileTarget::FacingOffsets(vec![Offset {
+                    tangent: 1,
+                    facing: 1,
+                }]),
                 rotation: Rotation::None,
             },
             water_damage: DamageInfo::none(),
@@ -817,7 +827,10 @@ pub fn load_card_infos(mut map: ResMut<CardInfoMap>) {
                 water: 0,
             },
             position_change: MovementInfo {
-                position: TileTarget::FacingOffsets(vec![Offset{ tangent: -1, facing: 1}]),
+                position: TileTarget::FacingOffsets(vec![Offset {
+                    tangent: -1,
+                    facing: 1,
+                }]),
                 rotation: Rotation::None,
             },
             water_damage: DamageInfo::none(),
@@ -834,7 +847,10 @@ pub fn load_card_infos(mut map: ResMut<CardInfoMap>) {
                 water: 0,
             },
             position_change: MovementInfo {
-                position: TileTarget::FacingOffsets(vec![Offset{ tangent: -1, facing: -1}]),
+                position: TileTarget::FacingOffsets(vec![Offset {
+                    tangent: -1,
+                    facing: -1,
+                }]),
                 rotation: Rotation::None,
             },
             water_damage: DamageInfo::none(),
@@ -851,7 +867,10 @@ pub fn load_card_infos(mut map: ResMut<CardInfoMap>) {
                 water: 0,
             },
             position_change: MovementInfo {
-                position: TileTarget::FacingOffsets(vec![Offset{ tangent: 1, facing: -1}]),
+                position: TileTarget::FacingOffsets(vec![Offset {
+                    tangent: 1,
+                    facing: -1,
+                }]),
                 rotation: Rotation::None,
             },
             water_damage: DamageInfo::none(),

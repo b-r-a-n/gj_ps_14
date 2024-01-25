@@ -26,6 +26,7 @@ pub fn add_item_sprite(
     for (item_id, item) in query.iter() {
         commands.entity(item_id).insert(SpriteSheetBundle {
             texture_atlas: sprite_sheet.0.clone(),
+            transform: Transform::from_xyz(0.0, 0.0, 1.0),
             sprite: match item {
                 Item::Water => TextureAtlasSprite::new(0),
                 Item::Energy => TextureAtlasSprite::new(1),

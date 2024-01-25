@@ -18,14 +18,18 @@ fn update_position_transforms(
             transform.translation.y = position.y as f32 * 64.0;
             transform.rotation = position.d.get_quat();
         } else {
-            let animation = animations.get(animating.unwrap().0).expect("Animation should exist");
+            let animation = animations
+                .get(animating.unwrap().0)
+                .expect("Animation should exist");
             let remaining_distance = match &animation.animation_type {
                 AnimationType::Move(_, vec) => {
                     let distance = Vec2::new(vec.x * 64.0, vec.y * 64.0);
                     distance - transform.translation.truncate()
                 }
                 AnimationType::Rotate(_, rotation) => {
-                    transform.rotation = transform.rotation.lerp(*rotation, time.delta_seconds()/animation.duration);
+                    transform.rotation = transform
+                        .rotation
+                        .lerp(*rotation, time.delta_seconds() / animation.duration);
                     Vec2::ZERO // TODO: Implement rotation animation
                 }
                 _ => Vec2::ZERO,
@@ -209,7 +213,8 @@ fn main() {
         )
         .add_systems(
             PostUpdate,
-            (update_position_transforms,).before(bevy::transform::TransformSystem::TransformPropagate),
+            (update_position_transforms,)
+                .before(bevy::transform::TransformSystem::TransformPropagate),
         )
         .run();
 }
