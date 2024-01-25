@@ -10,6 +10,7 @@ pub use player::*;
 use rand::Rng;
 pub use stats::*;
 pub use tiles::*;
+pub use puzzles::*;
 
 mod actions;
 mod card;
@@ -19,6 +20,7 @@ mod items;
 mod player;
 mod stats;
 mod tiles;
+mod puzzles;
 
 pub fn shuffle_deck(mut deck: Query<&mut Deck, With<Player>>) {
     deck.get_single_mut().expect("Should have 1 deck").shuffle();
@@ -59,106 +61,6 @@ pub fn despawn_cards(mut commands: Commands, cards: Query<Entity, With<ContentID
     }
 }
 
-const SPAWN_POINTS: [[Option<(i32, i32)>; 5]; 5] = [
-    [Some((1, 3)), None, None, None, None],
-    [Some((2, 2)), None, None, None, None],
-    [Some((3, 3)), None, None, None, None],
-    [Some((4, 1)), Some((3, 3)), None, None, None],
-    [Some((2, 2)), Some((3, 2)), Some((3, 1)), None, None],
-];
-const MAP_SIZES: [(i32, i32); 5] = [(1, 3), (3, 3), (3, 3), (5, 5), (6, 6)];
-const DECK_LISTS: [[Option<usize>; 16]; 5] = [
-    [
-        Some(1),
-        Some(5),
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-    ],
-    [
-        Some(1),
-        Some(5),
-        Some(3),
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-    ],
-    [
-        Some(1),
-        Some(5),
-        Some(3),
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-    ],
-    [
-        Some(1),
-        Some(5),
-        Some(3),
-        Some(4),
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-    ],
-    [
-        Some(1),
-        Some(5),
-        Some(3),
-        Some(4),
-        Some(8),
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-        None,
-    ],
-];
 
 #[derive(Default, Resource)]
 pub enum GameMode {
@@ -177,24 +79,20 @@ fn prepare_for_rogue_level(map: &mut MapParameters, _deck_list: &mut DeckList, l
 }
 
 fn prepare_for_puzzle_level(map: &mut MapParameters, deck_list: &mut DeckList, level_index: i32) {
-    let level_index = (level_index as usize) % SPAWN_POINTS.len();
+    let level_index = (level_index as usize) % NUM_PUZZLES;
+    let level = get_puzzle(level_index);
     *map = MapParameters {
-        columns: MAP_SIZES[level_index as usize].0,
-        rows: MAP_SIZES[level_index as usize].1,
-        flame_spawner: Spawner::Static(
-            SPAWN_POINTS[level_index as usize]
-                .iter()
-                .cloned()
-                .flatten()
-                .collect(),
+        columns: level.map_size.0,
+        rows: level.map_size.1,
+        flame_spawner: Spawner::Static(level.flames.iter()
+            .map(|(x, y)| (*x, *y, Tile::Fire(Intensity::Low)))
+            .collect()
         ),
-        item_spawner: Spawner::Static(vec![]),
+        item_spawner: Spawner::Static(level.items),
     };
-    deck_list.0 = DECK_LISTS[level_index]
+    deck_list.0 = level.deck_list
         .iter()
-        .flatten()
-        .cloned()
-        .map(|id| ContentID(id))
+        .map(|id| ContentID(*id))
         .collect();
 }
 

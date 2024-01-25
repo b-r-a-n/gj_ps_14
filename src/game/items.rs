@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Component)]
+#[derive(Clone, Component)]
 pub enum Item {
     Water,
     Energy,

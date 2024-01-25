@@ -19,12 +19,12 @@ pub struct SpawnTiles;
 
 #[allow(dead_code)]
 #[derive(Clone)]
-pub enum Spawner {
+pub enum Spawner<T> {
     Chance(f32, i32, i32),
-    Static(Vec<(i32, i32)>),
+    Static(Vec<(i32, i32, T)>),
 }
 
-impl Default for Spawner {
+impl<T> Default for Spawner<T> {
     fn default() -> Self {
         Self::Static(vec![])
     }
@@ -34,8 +34,8 @@ impl Default for Spawner {
 pub struct MapParameters {
     pub columns: i32,
     pub rows: i32,
-    pub flame_spawner: Spawner,
-    pub item_spawner: Spawner,
+    pub flame_spawner: Spawner<Tile>,
+    pub item_spawner: Spawner<Item>,
 }
 
 pub fn spawn_tiles(mut commands: Commands) {
@@ -92,7 +92,12 @@ fn tile_is_flame(
             let mut rng = rand::thread_rng();
             rng.gen_bool((1.0 - chance).into())
         }
-        Spawner::Static(positions) => positions.contains(&(x, y)),
+        Spawner::Static(positions) => {
+            positions.iter()
+                .map(|(x, y, _)| (*x, *y))
+                .collect::<Vec<(i32, i32)>>()
+                .contains(&(x, y))
+        }
     }
 }
 
@@ -169,8 +174,10 @@ impl bevy::ecs::system::Command for SpawnTiles {
                                     }
                                 },
                                 Spawner::Static(ref positions) => {
-                                    if positions.contains(&(x, y)) {
-                                        info!("Item would spawn at {}, {} due to static spawn config.", x, y);
+                                    for position in positions.iter() {
+                                        if position.0 == x && position.1 == y {
+                                            items.push((position.2.clone(), GamePosition { x, y, ..default() }));
+                                        }
                                     }
                                 }
                             }
