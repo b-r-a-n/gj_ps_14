@@ -62,7 +62,7 @@ pub fn despawn_cards(mut commands: Commands, cards: Query<Entity, With<ContentID
 }
 
 
-#[derive(Default, Resource)]
+#[derive(Default, PartialEq, Eq, Resource, Clone, Copy)]
 pub enum GameMode {
     #[default]
     Puzzle,
@@ -217,7 +217,8 @@ fn check_for_level_end(
     }
     if empty_count == 0 {
         info!("Level ended | Failure");
-        next_app_state.set(AppState::MainMenu);
+        // In puzzle mode? Try again, Main Menu, Exit
+        next_app_state.set(AppState::ResultMenu);
         next_game_state.set(GameState::None);
         next_turn_state.set(TurnState::None);
     } else if fire_count == 0 {

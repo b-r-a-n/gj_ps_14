@@ -3,12 +3,14 @@ use super::*;
 pub use hand::*;
 pub use level_menu::*;
 pub use main_menu::*;
+pub use result_menu::*;
 pub use resource::*;
 pub use tooltip::*;
 
 pub mod hand;
 pub mod level_menu;
 pub mod main_menu;
+pub mod result_menu;
 pub mod resource;
 pub mod tooltip;
 
@@ -19,6 +21,8 @@ pub struct TooltipPlugin;
 pub struct MenuUIPlugin;
 
 pub struct LevelUIPlugin;
+
+pub struct ResultUIPlugin;
 
 pub fn despawn_game_ui(
     mut commands: Commands,
@@ -96,5 +100,12 @@ impl Plugin for LevelUIPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<LevelMenuEvent>()
             .add_systems(Update, level_menu::handle_interactions);
+    }
+}
+
+impl Plugin for ResultUIPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_event::<ResultMenuEvent>()
+            .add_systems(Update, result_menu::handle_interactions);
     }
 }

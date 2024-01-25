@@ -49,6 +49,7 @@ pub fn handle_interactions(
 
 impl bevy::ecs::system::Command for SpawnMenuUI {
     fn apply(self, world: &mut World) {
+        let level_index = world.get_resource::<LevelIndex>().unwrap().0;
         world
             .spawn((
                 NodeBundle {
@@ -66,7 +67,7 @@ impl bevy::ecs::system::Command for SpawnMenuUI {
             ))
             .with_children(|parent| {
                 parent.spawn((TextBundle::from_section(
-                    "Next Level",
+                    format!("Level {}", level_index + 1),
                     TextStyle {
                         font_size: 80.0,
                         color: Color::WHITE,

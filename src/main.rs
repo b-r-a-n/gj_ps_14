@@ -125,6 +125,7 @@ enum AppState {
     #[default]
     MainMenu,
     LevelMenu,
+    ResultMenu,
     Game,
 }
 
@@ -178,6 +179,29 @@ fn handle_level_menu_events(
     }
 }
 
+fn handle_result_menu_events(
+    mut events: EventReader<ResultMenuEvent>,
+    mut app_state: ResMut<NextState<AppState>>,
+    mut game_state: ResMut<NextState<GameState>>,
+) {
+    for event in events.read() {
+        match event {
+            ResultMenuEvent::TryAgainPressed => {
+                app_state.set(AppState::LevelMenu);
+                game_state.set(GameState::Loading);
+            }
+            ResultMenuEvent::NextLevelPressed => {
+                app_state.set(AppState::Game);
+            }
+            ResultMenuEvent::MainMenuPressed => {
+                app_state.set(AppState::MainMenu);
+                game_state.set(GameState::None);
+            }
+        }
+    }
+}
+
+
 fn main() {
     App::new()
         .insert_resource(bevy::asset::AssetMetaCheck::Never)
@@ -186,6 +210,7 @@ fn main() {
         .add_plugins(CameraPlugin)
         .add_plugins(MenuUIPlugin)
         .add_plugins(LevelUIPlugin)
+        .add_plugins(ResultUIPlugin)
         .add_plugins(TooltipPlugin)
         .add_plugins(GamePlugin)
         .add_systems(
@@ -196,10 +221,13 @@ fn main() {
         .add_systems(OnExit(AppState::MainMenu), main_menu::despawn)
         .add_systems(
             Update,
-            (handle_level_menu_events).run_if(in_state(AppState::LevelMenu)),
+            (handle_level_menu_events.run_if(in_state(AppState::LevelMenu)),
+                    handle_result_menu_events.run_if(in_state(AppState::ResultMenu)),)
         )
         .add_systems(OnEnter(AppState::LevelMenu), level_menu::spawn)
         .add_systems(OnExit(AppState::LevelMenu), level_menu::despawn)
+        .add_systems(OnEnter(AppState::ResultMenu), result_menu::spawn)
+        .add_systems(OnExit(AppState::ResultMenu), result_menu::despawn)
         .add_systems(OnEnter(AppState::Game), spawn_game_ui)
         .add_systems(OnExit(AppState::Game), despawn_game_ui)
         .add_systems(
