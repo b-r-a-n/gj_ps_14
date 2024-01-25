@@ -31,7 +31,7 @@ pub struct DeckList(pub Vec<ContentID>);
 
 impl Default for DeckList {
     fn default() -> Self {
-        Self((1..=20).map(|id| ContentID(id)).collect())
+        Self(vec![1, 1, 2, 3, 4].iter().map(|id| ContentID(*id)).collect())
     }
 }
 
