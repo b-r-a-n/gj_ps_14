@@ -44,7 +44,7 @@ pub fn spawn_tiles(mut commands: Commands) {
 
 pub fn despawn_tiles_and_items(
     mut commands: Commands, 
-    query: Query<Entity, Or<(With<Tile>, With<Grid>, With<Item>)>>) {
+    query: Query<Entity, Or<(With<Tile>, With<Grid>, With<Item>, With<Animation>)>>) {
     for entity in query.iter() {
         commands.entity(entity).despawn_recursive();
     }
@@ -60,7 +60,7 @@ impl FromWorld for TileSpriteSheet {
             .expect("Failed get the `AssetServer` resource from the `World`");
         let texture_handle = asset_server.load("tiles.png");
         let texture_atlas =
-            TextureAtlas::from_grid(texture_handle, Vec2::new(64.0, 64.0), 5, 1, None, None);
+            TextureAtlas::from_grid(texture_handle, Vec2::new(64.0, 64.0), 7, 1, None, None);
         let mut texture_atlases = world
             .get_resource_mut::<Assets<TextureAtlas>>()
             .expect("Failed get the `Assets<TextureAtlas>` resource from the `World`");
@@ -190,9 +190,25 @@ impl bevy::ecs::system::Command for SpawnTiles {
 
 pub fn update_tiles(
     mut commands: Commands,
-    mut tiles: Query<(Entity, &Tile, &mut TextureAtlasSprite)>,
+    mut tiles: Query<(Entity, &Tile, &mut TextureAtlasSprite, Option<&Animating>)>,
+    animations: Query<&Animation>,
 ) {
-    for (tile_id, tile, mut sprite_index) in tiles.iter_mut() {
+    for (tile_id, tile, mut sprite_index, animating) in tiles.iter_mut() {
+        if let Some(animating) = animating {
+            let animation = animations.get(animating.0)
+                .expect("Animation should exist");
+            match animation.animation_type {
+                AnimationType::Blue(_) => {
+                    sprite_index.index = 5;
+                    continue;
+                }
+                AnimationType::Smoke(_) => {
+                    sprite_index.index = 6;
+                    continue;
+                }
+                _ => {}
+            }
+        }
         match tile {
             Tile::Fire(level) => {
                 sprite_index.index = match level {

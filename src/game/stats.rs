@@ -21,6 +21,17 @@ pub enum GameDirection {
     Right,
 }
 
+impl GameDirection {
+    pub fn get_quat(&self) -> Quat {
+        match self {
+            GameDirection::Up => Quat::from_rotation_z(0.0),
+            GameDirection::Down => Quat::from_rotation_z(std::f32::consts::PI),
+            GameDirection::Left => Quat::from_rotation_z(std::f32::consts::PI * 0.5),
+            GameDirection::Right => Quat::from_rotation_z(std::f32::consts::PI * 1.5),
+        }
+    }
+}
+
 #[derive(Clone, Component, Debug, Default)]
 pub struct GamePosition {
     pub x: i32,

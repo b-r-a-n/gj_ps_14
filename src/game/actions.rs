@@ -1,3 +1,5 @@
+use bevy::animation;
+
 use super::*;
 
 #[derive(Clone, Component, Debug)]
@@ -141,6 +143,18 @@ pub fn apply_card(
                     .get(player_id)
                     .expect("Failed to get player position");
                 let new_pos = base_pos.rotated(&rot).offset((*dist, 0));
+                commands.spawn(Animation {
+                    animation_type: AnimationType::Move(player_id, Vec2 {x: new_pos.x as f32, y: new_pos.y as f32}),
+                    duration: 0.35,
+                    parent: None,
+                });
+                if rot != &Rotation::None {
+                    commands.spawn(Animation {
+                        animation_type: AnimationType::Rotate(player_id, new_pos.d.get_quat()),
+                        duration: 0.35,
+                        parent: None,
+                    });
+                }
                 commands.spawn(Change {
                     entity: player_id,
                     updated_value: new_pos,
@@ -154,6 +168,18 @@ pub fn apply_card(
                     .get(player_id)
                     .expect("Failed to get player position");
                 let new_pos = &TileTarget::FacingOffsets(offsets.to_vec()).get_positions(base_pos)[0];
+                commands.spawn(Animation {
+                    animation_type: AnimationType::Move(player_id, Vec2 {x: new_pos.x as f32, y: new_pos.y as f32}),
+                    duration: 0.35,
+                    parent: None,
+                });
+                if rot != &Rotation::None {
+                    commands.spawn(Animation {
+                        animation_type: AnimationType::Rotate(player_id, new_pos.rotated(&rot).d.get_quat()),
+                        duration: 0.35,
+                        parent: None,
+                    });
+                }
                 commands.spawn(Change {
                     entity: player_id,
                     updated_value: new_pos.rotated(&rot).clone(),
@@ -164,8 +190,8 @@ pub fn apply_card(
         match &card_info.water_damage {
             DamageInfo {
                 damage_target: target,
-                amount: _,
-            } => {
+                amount: amnt,
+            } if *amnt > 0 => {
                 let grid = grid.get_single().expect("Failed to get grid");
                 let base_pos = game_positions
                     .get(player_id)
@@ -173,21 +199,85 @@ pub fn apply_card(
                 let target_positions = target.get_positions(base_pos);
                 for pos in target_positions.iter() {
                     if let Some(tile_id) = grid.get(pos) {
+                        info!("Spawning turn blue animation");
+                        let blue_id = commands.spawn(Animation {
+                            animation_type: AnimationType::Blue(tile_id),
+                            duration: 0.35,
+                            parent: None,
+                        }).id();
                         if let Tile::Fire(_) = tiles.get(tile_id).unwrap() {
                             commands.spawn(Change {
                                 entity: tile_id,
                                 updated_value: Tile::Empty,
                             });
+                            commands.spawn(Animation {
+                                animation_type: AnimationType::Smoke(tile_id),
+                                duration: 0.35,
+                                parent: Some(blue_id),
+                            });
                         }
                     }
                 }
-            }
+            },
+            _ => {},
         }
         turn_state.set(TurnState::Animating);
         commands.entity(was_played_id).despawn_recursive();
     }
 }
 
-pub fn animate_cards(mut next_turn_state: ResMut<NextState<TurnState>>) {
-    next_turn_state.set(TurnState::Started);
+pub enum AnimationType {
+    Blue(Entity),
+    Smoke(Entity),
+    Rotate(Entity, Quat),
+    Move(Entity, Vec2),
+}
+#[derive(Component)]
+pub struct Animation {
+    pub animation_type: AnimationType,
+    pub duration: f32,
+    pub parent: Option<Entity>,
+}
+
+#[derive(Component)]
+pub struct Animating(pub Entity);
+
+pub fn animate_cards(
+    mut commands: Commands,
+    mut next_turn_state: ResMut<NextState<TurnState>>,
+    time: Res<Time>,
+    mut animations: Query<(Entity, &mut Animation)>,
+) {
+    if animations.is_empty() {
+        next_turn_state.set(TurnState::Started);
+    }
+    let mut finished_animations = Vec::new();
+    for (animation_id, mut animation) in animations.iter_mut() {
+        if animation.parent.is_some() {
+            continue;
+        }
+        animation.duration -= time.delta_seconds();
+        let target_id = match &animation.animation_type {
+            AnimationType::Blue(target_id) => target_id,
+            AnimationType::Smoke(target_id) => target_id,
+            AnimationType::Rotate(target_id, _) => target_id,
+            AnimationType::Move(target_id, _) => target_id,
+        };
+        if animation.duration <= 0.0 {
+            finished_animations.push(animation_id);
+            commands.entity(animation_id).despawn_recursive();
+            commands.entity(*target_id).remove::<Animating>();
+        } else {
+            commands.entity(*target_id).insert(Animating(animation_id));
+        }
+    }
+    for entity in finished_animations.iter() {
+        for (_, mut animation) in animations.iter_mut() {
+            if let Some(parent) = animation.parent {
+                if parent == *entity {
+                    animation.parent = None;
+                }
+            }
+        }
+    }
 }

@@ -297,6 +297,7 @@ impl bevy::ecs::system::Command for SpawnHandUI {
 }
 
 pub fn update_playable_indicator(
+    state: Res<State<TurnState>>,
     statuses: Query<&CardStatus>,
     hand: Query<&Hand>,
     mut card_uis: Query<(Entity, &CardUISlot, &CardInstance)>,
@@ -322,7 +323,12 @@ pub fn update_playable_indicator(
         .expect("There should only be one player hand");
 
     let mut playable_count = 0;
+    let is_animating = state.get() == &TurnState::Animating;
     for (ui_id, slot, _) in card_uis.iter_mut() {
+        if is_animating {
+            borders.get_mut(ui_id).unwrap().0 = Color::NONE.into();
+            continue;
+        }
         if let Some(card_instance_id) = hand.0[slot.0] {
             let status = statuses.get(card_instance_id).expect("Card without status");
             if status.is_playable() {

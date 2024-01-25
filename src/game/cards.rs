@@ -125,7 +125,7 @@ pub struct ResourceInfo {
     pub water: i32,
 }
 
-#[derive(Debug)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum Rotation {
     None,
     Left,

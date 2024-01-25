@@ -545,7 +545,7 @@ impl Plugin for GamePlugin {
                     .chain()
                     .run_if(in_state(GameState::Playing)),
             )
-            .add_systems(OnEnter(TurnState::Animating), (animate_cards,))
+            .add_systems(Update, (animate_cards,).run_if(in_state(TurnState::Animating)))
             .add_systems(
                 Update,
                 (
@@ -575,7 +575,7 @@ impl Plugin for GamePlugin {
                     apply_item,
                     apply_card,
                     apply_card_actions,
-                    check_for_level_end,
+                    check_for_level_end.run_if(not(in_state(TurnState::Animating))),
                     sync_deck,
                     sync_hand,
                     update_tiles,
