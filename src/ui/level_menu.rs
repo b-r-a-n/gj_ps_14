@@ -50,12 +50,19 @@ pub fn handle_interactions(
 impl bevy::ecs::system::Command for SpawnMenuUI {
     fn apply(self, world: &mut World) {
         let level_index = world.get_resource::<LevelIndex>().unwrap().0;
+        let game_mode = world.get_resource::<GameMode>().unwrap().clone();
+        let level_index = match game_mode {
+            GameMode::Puzzle => (level_index as usize) % NUM_PUZZLES,
+            GameMode::Rogue => level_index as usize,
+        };
         world
             .spawn((
                 NodeBundle {
                     style: Style {
                         position_type: PositionType::Absolute,
                         flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        justify_content: JustifyContent::SpaceEvenly,
                         width: Val::Percent(100.0),
                         height: Val::Percent(100.0),
                         ..default()
@@ -77,7 +84,13 @@ impl bevy::ecs::system::Command for SpawnMenuUI {
                 parent
                     .spawn((
                         ButtonBundle {
-                            style: Style { ..default() },
+                            style: Style { 
+                                align_items: AlignItems::Center,
+                                justify_content: JustifyContent::Center,
+                                min_height: Val::Px(64.0),
+                                min_width: Val::Vw(30.0),
+                                ..default() 
+                            },
                             background_color: Color::TEAL.into(),
                             ..default()
                         },
@@ -96,7 +109,13 @@ impl bevy::ecs::system::Command for SpawnMenuUI {
                 parent
                     .spawn((
                         ButtonBundle {
-                            style: Style { ..default() },
+                            style: Style { 
+                                align_items: AlignItems::Center,
+                                justify_content: JustifyContent::Center,
+                                min_height: Val::Px(64.0),
+                                min_width: Val::Vw(30.0),
+                                ..default() 
+                            },
                             background_color: Color::MAROON.into(),
                             ..default()
                         },

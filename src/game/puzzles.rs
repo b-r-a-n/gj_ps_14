@@ -47,7 +47,7 @@ impl Level {
     }
 }
 
-pub const NUM_PUZZLES: usize = 5;
+pub const NUM_PUZZLES: usize = 7;
 
 pub fn get_puzzle(index: usize) -> Level {
     match index {
@@ -82,6 +82,22 @@ pub fn get_puzzle(index: usize) -> Level {
                 .with_flames(vec![(4, 4)])
                 .with_items(vec![(2, 2, Item::Card(ContentID(13)))])
                 .with_deck(vec![1, 1, 3])
+        },
+        5 => {
+            Level::new()
+                .with_size((4, 4))
+                .with_flames(vec![(4, 4)])
+                .with_items(vec![(1, 2, Item::Card(ContentID(20)))])
+                .with_items(vec![(2, 1, Item::Water)])
+                .with_items(vec![(2, 2, Item::Card(ContentID(15)))])
+                .with_deck(vec![1, ])
+        },
+        6 => {
+            Level::new()
+                .with_size((5, 5))
+                .with_flames(vec![(4, 4)])
+                .with_items(vec![(4, 1, Item::Card(ContentID(8)))])
+                .with_deck(vec![1, 3, 4])
         },
 
         _ => Level::new()

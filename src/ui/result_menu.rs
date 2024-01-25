@@ -61,6 +61,8 @@ impl bevy::ecs::system::Command for SpawnMenuUI {
                     style: Style {
                         position_type: PositionType::Absolute,
                         flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        justify_content: JustifyContent::SpaceEvenly,
                         width: Val::Percent(100.0),
                         height: Val::Percent(100.0),
                         ..default()
@@ -83,7 +85,13 @@ impl bevy::ecs::system::Command for SpawnMenuUI {
                     parent
                         .spawn((
                             ButtonBundle {
-                                style: Style { ..default() },
+                                style: Style { 
+                                    align_items: AlignItems::Center,
+                                    justify_content: JustifyContent::Center,
+                                    min_height: Val::Px(64.0),
+                                    min_width: Val::Vw(30.0),
+                                    ..default() 
+                                },
                                 background_color: Color::TEAL.into(),
                                 ..default()
                             },
@@ -109,7 +117,13 @@ impl bevy::ecs::system::Command for SpawnMenuUI {
                     parent
                         .spawn((
                             ButtonBundle {
-                                style: Style { ..default() },
+                                style: Style { 
+                                    align_items: AlignItems::Center,
+                                    justify_content: JustifyContent::Center,
+                                    min_height: Val::Px(64.0),
+                                    min_width: Val::Vw(30.0),
+                                    ..default() 
+                                },
                                 background_color: Color::TEAL.into(),
                                 ..default()
                             },
@@ -135,7 +149,13 @@ impl bevy::ecs::system::Command for SpawnMenuUI {
                 parent
                     .spawn((
                         ButtonBundle {
-                            style: Style { ..default() },
+                            style: Style { 
+                                align_items: AlignItems::Center,
+                                justify_content: JustifyContent::Center,
+                                min_height: Val::Px(64.0),
+                                min_width: Val::Vw(30.0),
+                                ..default() 
+                            },
                             background_color: Color::MAROON.into(),
                             ..default()
                         },
